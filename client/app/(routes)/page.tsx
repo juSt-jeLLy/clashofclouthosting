@@ -1,22 +1,26 @@
 "use client";
 
 import { ReactElement } from "react";
-import HelloWorld from "../_components/HelloWorld";
-import TelegramUser from "../_components/TelegramUser";
-import { TwitterLogin } from "../_components/TwitterLogin";
-import { DiscordLogin } from "../_components/DiscordLogin";
-import { GithubLogin } from "../_components/GithubLogin";
+import Navbar from "../_components/Navbar";
+import MemeLeaderboard from "../_components/MemeLeaderboard";
+import BrainrotAnimation from "../_components/BrainrotAnimation";
+import HeroSection from "../_components/HeroSection";
+import WinningMemes from "../_components/WinningMemes";
 
 export default function Home(): ReactElement {
   return (
-    <main className="min-h-screen w-full flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl mx-auto">
-        <HelloWorld />
-        <TelegramUser />
-        <TwitterLogin />
-        <DiscordLogin />
-        <GithubLogin />
-      </div>
-    </main>
+    <div className="min-h-screen bg-gradient-to-r from-purple-900 to-pink-900">
+      <Navbar />
+      <main className="relative">
+        <BrainrotAnimation />
+        <div className="container mx-auto px-4 py-8">
+          <HeroSection />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+            <MemeLeaderboard />
+            <WinningMemes />
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

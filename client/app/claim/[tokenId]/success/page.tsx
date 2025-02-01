@@ -74,7 +74,7 @@ export default function SuccessPage() {
     };
 
     fetchTwitterProfile();
-  }, [searchParams]);
+  }, [searchParams, router, tokenId]);
 
   const handleGetSmartAccount = async () => {
     setIsLoadingAccount(true);
@@ -353,3 +353,4 @@ export default function SuccessPage() {
     </div>
   );
 }
+
