@@ -15,7 +15,7 @@ const memes = [
   },
   {
     id: "2",
-    imageUrl: "/memes/2.jpg", 
+    imageUrl: "/memes/2.jpg",
     title: "Web3 Problems",
     creator: "0xabcd...efgh",
     votes: 69,
@@ -53,7 +53,7 @@ export default function MemePool() {
             animate={{ y: 0, opacity: 1 }}
             className="text-6xl font-extrabold text-center mb-12 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 text-transparent bg-clip-text drop-shadow-lg hover:scale-105 transition-transform"
           >
-            🔥 Meme Pool 🔥
+            🔥 Colosseum 🔥
           </motion.h1>
           <motion.div
             initial={{ opacity: 0 }}

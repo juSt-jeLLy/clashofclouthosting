@@ -34,7 +34,7 @@ export default function HeroSection() {
         animate={{ scale: 1 }}
         className="flex gap-8 justify-center" // Increased gap
       >
-        <Link href="/memepool">
+        <Link href="/hexpit">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
