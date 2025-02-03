@@ -35,30 +35,26 @@ export default function WinningMemes() {
 
     const provider = new ethers.JsonRpcProvider(providerUrl);
     const contract = new ethers.Contract(contractAddress, contractABI, provider);
-    const filter = contract.filters.WinnerDeclared(); 
+    const filter = contract.filters.WinnerDeclared();
     const events = await contract.queryFilter(filter);
 
-    return Promise.all(events.map(async (event) => {
+    const memes: WinningMeme[] = [];
+    for (const event of events) {
       if (isEventLog(event)) {
         const totalStaked = await contract.totalStaked(event.args.cid);
-        return {
+        memes.push({
           cid: event.args.cid.toString(),
           creator: event.args.creator,
           title: "",
           winningDate: new Date(event.args.timestamp * 1000).toISOString().split('T')[0],
-          score: Number(ethers.formatEther(totalStaked)) // Convert from wei to ether
-        };
+          score: Number(ethers.formatEther(totalStaked)),
+        });
+        // Add a delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
       }
-      return {
-        cid: "",
-        creator: "",
-        title: "",
-        winningDate: "",
-        score: 0
-      };
-    }));
-}
-  async function getWinningMemesData(memes: WinningMeme[]): Promise<WinningMeme[]> {
+    }
+    return memes;
+  }  async function getWinningMemesData(memes: WinningMeme[]): Promise<WinningMeme[]> {
     return await Promise.all(
       memes.map(async (meme) => {
         const response = await fetch(`https://ipfs.io/ipfs/${meme.cid}`);
@@ -77,7 +73,6 @@ export default function WinningMemes() {
     }
     loadWinningMemes();
   }, []);
-
   useEffect(() => {
     const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
     const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
@@ -86,6 +81,9 @@ export default function WinningMemes() {
 
     const provider = new ethers.JsonRpcProvider(providerUrl);
     const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
+    // Increase the polling interval (e.g., 15 seconds)
+    provider.pollingInterval = 15000;
 
     // Listen for new winners
     contract.on("WinnerDeclared", (cid, winner) => {
@@ -105,7 +103,6 @@ export default function WinningMemes() {
       contract.removeAllListeners("WinnerDeclared");
     };
   }, []);
-
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.8 }}

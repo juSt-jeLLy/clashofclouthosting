@@ -77,44 +77,40 @@ export default function MemeLeaderboard() {
       })
     );
   }
+const cache: Record<string, Meme[]> = {};
 
-  async function loadMemes() {
-    const memesFromContract = await fetchMemes();
-    const memesWithData = await getDataMemes(memesFromContract);
-
-    // Get stake amounts and sort memes
-    const memesWithStakes = await Promise.all(
-      memesWithData.map(async (meme) => {
-        const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
-        const contract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          contractABI,
-          provider
-        );
-        const totalStaked = await contract.totalStaked(meme.cid);
-        return {
-          ...meme,
-          score: Number(ethers.formatEther(totalStaked)),
-        };
-      })
-    );
-
-    // Sort by stake amount and get top 5
-    const topMemes = memesWithStakes
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-
-    setMemes(topMemes);
+async function loadMemes() {
+  if (cache["memes"]) {
+    setMemes(cache["memes"]);
+    return;
   }
 
+  const memesFromContract = await fetchMemes();
+  const memesWithData = await getDataMemes(memesFromContract);
+  const memesWithStakes = await Promise.all(
+    memesWithData.map(async (meme) => {
+      const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
+      const totalStaked = await contract.totalStaked(meme.cid);
+      return {
+        ...meme,
+        score: Number(ethers.formatEther(totalStaked)),
+      };
+    })
+  );
+
+  const topMemes = memesWithStakes.sort((a, b) => b.score - a.score).slice(0, 5);
+  cache["memes"] = topMemes;
+  setMemes(topMemes);
+}
   useEffect(() => {
     // Initial load
     loadMemes();
 
-    // Set up hourly interval (3600000 ms = 1 hour)
+    // Set up interval (e.g., every 10 seconds)
     const interval = setInterval(() => {
       loadMemes();
-    }, 3600000);
+    }, 10000);
 
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
