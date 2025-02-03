@@ -8,12 +8,11 @@ interface MemeCardProps {
   imageUrl: string;
   title: string;
   creator: string;
-  votes: number;
   stakes: number;
   tags: string[];
 }
 
-export default function MemeCard({ imageUrl, title, creator, votes, stakes, tags }: MemeCardProps) {
+export default function MemeCard({ imageUrl, title, creator, stakes, tags }: MemeCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.05, rotate: [-1, 1, -1, 0] }}
@@ -47,14 +46,6 @@ export default function MemeCard({ imageUrl, title, creator, votes, stakes, tags
         </div>
 
         <div className="flex gap-2 mt-4">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="flex-1 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-bold"
-          >
-            🗳️ {votes} Votes
-          </motion.button>
-
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}

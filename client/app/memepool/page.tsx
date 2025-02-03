@@ -3,45 +3,77 @@
 import { motion } from "framer-motion";
 import MemeCard from "../_components/MemeCard";
 import Navbar from "../_components/Navbar";
+import { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import contractABI from "../../../server/scripts/abi.json";
 
-const memes = [
-  {
-    id: "1",
-    imageUrl: "/memes/1.jpg",
-    title: "Epic Gamer Moment",
-    creator: "0x1234...5678",
-    votes: 420,
-    tags: ["gaming", "epic"],
-  },
-  {
-    id: "2",
-    imageUrl: "/memes/2.jpg",
-    title: "Web3 Problems",
-    creator: "0xabcd...efgh",
-    votes: 69,
-    tags: ["crypto", "web3"],
-  },
-];
+interface Meme {
+  id: string;
+  imageUrl: string;
+  title: string;
+  creator: string;
+  votes: number;
+  stakes: number;
+  tags: string[];
+}
 
-const AnimatedBackground = () => (
-  <motion.div
-    className="absolute inset-0 bg-gradient-to-r from-purple-900 via-pink-800 to-purple-900"
-    animate={{
-      background: [
-        "linear-gradient(45deg, #4a148c, #e91e63)",
-        "linear-gradient(45deg, #311b92, #ff1744)",
-        "linear-gradient(45deg, #4a148c, #e91e63)",
-      ],
-    }}
-    transition={{
-      duration: 3,
-      repeat: Infinity,
-      ease: "easeInOut",
-    }}
-  />
-);
+function isEventLog(event: any): event is ethers.EventLog {
+  return (
+    event &&
+    typeof event.args === "object" &&
+    "cid" in event.args &&
+    "creator" in event.args
+  );
+}
 
 export default function MemePool() {
+  const [memes, setMemes] = useState<Meme[]>([]);
+
+  async function fetchMemes() {
+    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    if (!providerUrl || !contractAddress) {
+      throw new Error("Missing required environment variables");
+    }
+
+    const provider = new ethers.JsonRpcProvider(providerUrl);
+    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+    const filter = contract.filters.MemeSubmitted();
+    const events = await contract.queryFilter(filter);
+
+    const memesData = await Promise.all(
+      events.map(async (event): Promise<Meme | undefined> => {
+        if (isEventLog(event)) {
+          const cid = event.args.cid.toString();
+          const totalStaked = await contract.totalStaked(cid);
+        
+          const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+          const metadata = await response.json();
+
+          return {
+            id: cid,
+            imageUrl: `https://ipfs.io/ipfs/${cid}`,
+            title: metadata.title || "Untitled Meme",
+            creator: event.args.creator,
+            votes: 0,
+            stakes: Number(ethers.formatEther(totalStaked)),
+            tags: metadata.tags || []
+          };
+        }
+        return undefined;
+      })
+    );
+
+    // Filter out undefined values and explicitly type as Meme[]
+    const validMemes: Meme[] = memesData.filter((meme): meme is Meme => meme !== undefined);
+    setMemes(validMemes);
+  }
+  useEffect(() => {
+    fetchMemes();
+  }, []);
+
+  // Rest of your existing UI code remains the same
   return (
     <div className="min-h-screen relative overflow-hidden">
       <AnimatedBackground />
@@ -79,3 +111,21 @@ export default function MemePool() {
     </div>
   );
 }
+
+const AnimatedBackground = () => (
+  <motion.div
+    className="absolute inset-0 bg-gradient-to-r from-purple-900 via-pink-800 to-purple-900"
+    animate={{
+      background: [
+        "linear-gradient(45deg, #4a148c, #e91e63)",
+        "linear-gradient(45deg, #311b92, #ff1744)",
+        "linear-gradient(45deg, #4a148c, #e91e63)",
+      ],
+    }}
+    transition={{
+      duration: 3,
+      repeat: Infinity,
+      ease: "easeInOut",
+    }}
+  />
+);

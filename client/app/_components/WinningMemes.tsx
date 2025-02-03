@@ -1,27 +1,110 @@
 "use client";
 
-import { ReactElement } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { ethers } from "ethers";
+import contractABI from "../../../server/scripts/abi.json";
 
 interface WinningMeme {
-  id: string;
-  imageUrl: string;
+  cid: string;
+  creator: string;
   title: string;
   winningDate: string;
-  votes: number;
+  score: number;
 }
 
-export default function WinningMemes(): ReactElement {
-  const winningMemes: WinningMeme[] = [
-    {
-      id: "1",
-      imageUrl: "/memes/winner1.jpg",
-      title: "Ultimate Gigachad",
-      winningDate: "2024-01-20",
-      votes: 42069
-    },
-    // Add more memes here
-  ];
+function isEventLog(event: any): event is ethers.EventLog {
+  return (
+    event &&
+    typeof event.args === "object" &&
+    "cid" in event.args &&
+    "creator" in event.args
+  );
+}
+
+export default function WinningMemes() {
+  const [winningMemes, setWinningMemes] = useState<WinningMeme[]>([]);
+
+  async function fetchWinningMemes(): Promise<WinningMeme[]> {
+    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    if (!providerUrl || !contractAddress) {
+      throw new Error("Missing required environment variables");
+    }
+
+    const provider = new ethers.JsonRpcProvider(providerUrl);
+    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+    const filter = contract.filters.WinnerDeclared(); 
+    const events = await contract.queryFilter(filter);
+
+    return Promise.all(events.map(async (event) => {
+      if (isEventLog(event)) {
+        const totalStaked = await contract.totalStaked(event.args.cid);
+        return {
+          cid: event.args.cid.toString(),
+          creator: event.args.creator,
+          title: "",
+          winningDate: new Date(event.args.timestamp * 1000).toISOString().split('T')[0],
+          score: Number(ethers.formatEther(totalStaked)) // Convert from wei to ether
+        };
+      }
+      return {
+        cid: "",
+        creator: "",
+        title: "",
+        winningDate: "",
+        score: 0
+      };
+    }));
+}
+  async function getWinningMemesData(memes: WinningMeme[]): Promise<WinningMeme[]> {
+    return await Promise.all(
+      memes.map(async (meme) => {
+        const response = await fetch(`https://ipfs.io/ipfs/${meme.cid}`);
+        const data = await response.json();
+        return { ...meme, ...data };
+      })
+    );
+  }
+
+  useEffect(() => {
+    async function loadWinningMemes() {
+      const memesFromContract = await fetchWinningMemes();
+      const memesWithData = await getWinningMemesData(memesFromContract);
+      const lastThreeWinners = memesWithData.slice(-3).reverse();
+      setWinningMemes(lastThreeWinners);
+    }
+    loadWinningMemes();
+  }, []);
+
+  useEffect(() => {
+    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    if (!providerUrl || !contractAddress) return;
+
+    const provider = new ethers.JsonRpcProvider(providerUrl);
+    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
+    // Listen for new winners
+    contract.on("WinnerDeclared", (cid, winner) => {
+      setWinningMemes(prevMemes => {
+        const newMeme = {
+          cid: cid.toString(),
+          creator: winner,
+          title: "",
+          winningDate: new Date().toISOString().split('T')[0],
+          score: 0
+        };
+        return [...prevMemes.slice(-2), newMeme];
+      });
+    });
+
+    return () => {
+      contract.removeAllListeners("WinnerDeclared");
+    };
+  }, []);
 
   return (
     <motion.div 
@@ -36,7 +119,7 @@ export default function WinningMemes(): ReactElement {
       <div className="space-y-6">
         {winningMemes.map((meme, index) => (
           <motion.div
-            key={meme.id}
+            key={meme.cid}
             initial={{ x: -100 }}
             animate={{ x: 0 }}
             transition={{ delay: index * 0.2 }}
@@ -45,7 +128,7 @@ export default function WinningMemes(): ReactElement {
           >
             <motion.img
               whileHover={{ scale: 1.05 }}
-              src={meme.imageUrl}
+              src={`https://ipfs.io/ipfs/${meme.cid}`}
               alt={meme.title}
               className="w-full h-48 object-cover rounded-lg mb-2 hover:shadow-[0_0_20px_rgba(219,39,119,0.4)]"
             />
@@ -61,7 +144,7 @@ export default function WinningMemes(): ReactElement {
                 whileHover={{ scale: 1.1 }}
                 className="text-pink-400 font-bold"
               >
-                {meme.votes.toLocaleString()} votes
+                {meme.score.toLocaleString()} votes
               </motion.span>
             </div>
           </motion.div>
