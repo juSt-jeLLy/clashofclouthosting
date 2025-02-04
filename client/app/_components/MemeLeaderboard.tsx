@@ -16,17 +16,6 @@ interface Meme {
   score: number; // Score is required
 }
 
-
-// Type guard to check if an event is an EventLog
-function isEventLog(event: any): event is ethers.EventLog {
-  return (
-    event &&
-    typeof event.args === "object" &&
-    "cid" in event.args &&
-    "creator" in event.args
-  );
-}
-
 export default function MemeLeaderboard() {
   const [memes, setMemes] = useState<Meme[]>([]);
 
@@ -49,21 +38,11 @@ export default function MemeLeaderboard() {
 
     // Get memes with their cid and creator address
     return events.map((event) => {
-      if (isEventLog(event)) {
-        return {
-          cid: event.args.cid.toString(),
-          creator: event.args.creator,
-          title: "", // Initialize title, you will need to fetch it from IPFS or another source
-          score: 0, // Initialize score to 0
-        };
-      }
-      // Handle the case where the event is not an EventLog
-      console.warn("Event is not of type EventLog:", event);
       return {
-        cid: "",
-        creator: "",
-        title: "",
-        score: 0,
+        cid: event.args.cid.toString(),
+        creator: event.args.creator,
+        title: "", // Initialize title, you will need to fetch it from IPFS or another source
+        score: 0, // Initialize score to 0
       };
     });
   }  async function getDataMemes(memes: Meme[]): Promise<Meme[]> {
@@ -71,6 +50,9 @@ export default function MemeLeaderboard() {
       memes.map(async (meme) => {
         const { cid } = meme;
         // Fetch data from IPFS using the CID
+        console.log('TEST'.repeat(100))
+        console.log(meme)
+        console.log(cid)
         const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
         const data = await response.json();
         return { ...data, cid, score: meme.score }; // Ensure data contains title and score
@@ -158,7 +140,7 @@ async function loadMemes() {
               <div>
                 <h3 className="text-white font-semibold">{meme.title}</h3>
                 <p className="text-gray-400 text-sm hover:text-purple-400 transition-colors">
-                  {meme.creator.slice(0, 6)}...{meme.creator.slice(-4)}
+                  {meme.creator?.slice(0, 6)}...{meme.creator?.slice(-4)}
                 </p>
               </div>
             </div>
