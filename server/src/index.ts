@@ -12,6 +12,8 @@ import twitterRouter from "./routes/twitter.js";
 import discordRouter from "./routes/discord.js";
 import cookieParser from "cookie-parser";
 import githubRouter from "./routes/github.js";
+import generateRouter from "./routes/generate.js";
+import runRouter from "./routes/run.js";
 import { AnyType } from "./utils.js";
 import { isHttpError } from "http-errors";
 
@@ -55,6 +57,10 @@ app.use("/auth/discord", discordRouter);
 
 // Mount GitHub OAuth routes
 app.use("/auth/github", githubRouter);
+
+app.use("/generate", generateRouter);
+
+app.use("/run", runRouter);
 
 // 404 handler
 app.use((_req: Request, _res: Response, _next: NextFunction) => {
