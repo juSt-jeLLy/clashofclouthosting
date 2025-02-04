@@ -45,7 +45,7 @@ export default function MemeLeaderboard() {
       provider
     );
     const filter = contract.filters.MemeSubmitted();
-    const events = await contract.queryFilter(filter);
+    const events = await contract.queryFilter(filter,);
 
     // Get memes with their cid and creator address
     return events.map((event) => {

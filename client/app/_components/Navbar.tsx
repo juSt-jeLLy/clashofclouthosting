@@ -71,6 +71,22 @@ export default function Navbar() {
                 },
               },
             }}
+            href="/"
+            className={buttonStyles}
+          >
+            Home
+          </motion.a>
+          <motion.a
+            whileHover={{
+              scale: 1.1,
+              y: [-2, 2, -2],
+              transition: {
+                y: {
+                  repeat: Infinity,
+                  duration: 0.5,
+                },
+              },
+            }}
             href="/hexpit"
             className={buttonStyles}
           >
