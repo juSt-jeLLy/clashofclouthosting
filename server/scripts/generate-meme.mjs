@@ -35,7 +35,8 @@ const endpointUrl = "https://api.twitter.com/2/tweets/search/recent";
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.on(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}!`);
-  run();
+  //run();
+  fetchMemes();
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
@@ -48,11 +49,12 @@ const run = async () => {
     const { text_meme, image } = JSON.parse(meme_json);
     const gifUrl = await getGif(image);
     const [twitterUrl, messageUrl] = await spreadMeme(text_meme, gifUrl);
-    uploadMeme(text_meme, messageUrl, twitterUrl, gifUrl);
+    const cid = await uploadMeme(text_meme, messageUrl, twitterUrl, gifUrl);
+    publishMeme(cid);
   }
 
-  const winner = await getWinner();
-  console.log("the winner is", winner);
+  //const winner = await getWinner();
+  //console.log("the winner is", winner);
 
   await client.destroy();
 };
@@ -70,6 +72,8 @@ async function fetchMemes() {
     address: event.args[1],
   }));
 
+  console.log(memes);
+
   return memes;
 }
 
@@ -81,6 +85,16 @@ async function publishResult() {
   const winner = await getWinner();
 
   contract.declareWinner(winner.cid);
+}
+
+async function publishMeme(cid) {
+  const provider = new ethers.JsonRpcProvider(providerUrl);
+  const wallet = new ethers.Wallet(process.env.privateKey, provider);
+  const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+
+  console.log("submitting", cid);
+
+  contract.submitMeme(cid, "0x5889D465C61136584793A50D18ae7C4ad98e152f");
 }
 
 // pinata cid to object
@@ -178,7 +192,7 @@ async function postOnTwitter(message, gifUrl) {
 
 async function getMeme() {
   try {
-    const url = "http://54.198.186.81:3000/v1/chat/completions";
+    const url = "http://3.81.38.203:3000/v1/chat/completions";
     const options = {
       method: "POST",
       headers: {
@@ -191,7 +205,7 @@ async function getMeme() {
           {
             role: "user",
             content:
-              'Please generate a short meme about web3. I want only the meme, no other word. It should only be a text-meme. You should also include words so I could search these words on tenor and get an image related to the text_meme. Keep in mind that I will always only take the first image that I find.  I will then add the text on the meme. The answer format should be a JSON like this: {"text_meme":"the text_meme", "image":"image i should search on tenor"}. The format is VERY important, please respect it.',
+              'Please generate a short meme about web3. I want only the meme, no other word. It should only be a text-meme. You should also include words so I could search these words on tenor and get an image related to the text_meme. Keep in mind that I will always only take the first image that I find.  I will then add the text on the meme. The answer format should be a JSON like this: {"text_meme":{{the text_meme}}, "image": {{image i should search on tenor}}. The format is VERY very important, please respect it. Just remplate text between {{}}.',
           },
         ],
       }),
@@ -231,6 +245,8 @@ async function uploadMeme(meme, messageUrl, twitterUrl, gifUrl) {
     const blob = encodeJSON(object);
     const file = new File([blob], meme, { type: "application/json" });
     const upload = await pinata.upload.file(file);
+    console.log(upload);
+    return upload.IpfsHash;
   } catch (error) {
     console.log(error);
   }
