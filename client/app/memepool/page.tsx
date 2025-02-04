@@ -17,15 +17,6 @@ interface Meme {
   tags: string[];
 }
 
-function isEventLog(event: any): event is ethers.EventLog {
-  return (
-    event &&
-    typeof event.args === "object" &&
-    "cid" in event.args &&
-    "creator" in event.args
-  );
-}
-
 export default function MemePool() {
   const [memes, setMemes] = useState<Meme[]>([]);
 
@@ -44,24 +35,21 @@ export default function MemePool() {
 
     const memesData = await Promise.all(
       events.map(async (event): Promise<Meme | undefined> => {
-        if (isEventLog(event)) {
-          const cid = event.args.cid.toString();
-          const totalStaked = await contract.totalStaked(cid);
-        
-          const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
-          const metadata = await response.json();
+        const cid = event.args.cid.toString();
+        const totalStaked = await contract.totalStaked(cid);
+      
+        const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+        const metadata = await response.json();
 
-          return {
-            id: cid,
-            imageUrl: `https://ipfs.io/ipfs/${cid}`,
-            title: metadata.title || "Untitled Meme",
-            creator: event.args.creator,
-            votes: 0,
-            stakes: Number(ethers.formatEther(totalStaked)),
-            tags: metadata.tags || []
-          };
-        }
-        return undefined;
+        return {
+          id: cid,
+          imageUrl: metadata.gif_url,
+          title: metadata.meme || "Untitled Meme",
+          creator: event.args.creator,
+          votes: 0,
+          stakes: Number(ethers.formatEther(totalStaked)),
+          tags: metadata.tags || []
+        };
       })
     );
 
