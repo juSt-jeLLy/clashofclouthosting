@@ -20,28 +20,43 @@ const providerUrl = "https://testnet.evm.nodes.onflow.org";
 const contractAddress = "0x56bAD49451a06c19b1b9d4dD7168Ae9abf7ffca7";
 import contractABI from "./abi.json" with { type: "json" };
 
-const NUMBER_OF_MEMES_GENERATED = 1;
+const NUMBER_OF_MEMES_GENERATED = 3;
 
 const pinata = new PinataSDK({
   pinataJwt: process.env.PINATA_JWT,
   pinataGateway: "gray-tough-gull-222.mypinata.cloud",
 });
 
-const twitterCookiesPath = join(__dirname, "..", "..", "twitter-cookies.json");
+const twitterCookiesPath = join(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "twitter-cookies.json"
+);
 
 const twitter_token = process.env.TWITTER_ACCESS_TOKEN_SECRET;
 const endpointUrl = "https://api.twitter.com/2/tweets/search/recent";
+
+export async function generateMeme(keywords) {
+  const meme_json = await getMeme(keywords);
+  const { text_meme, image } = JSON.parse(meme_json);
+  const gifUrl = await getGif(image);
+  const [twitterUrl, messageUrl] = await spreadMeme(text_meme, gifUrl);
+  const cid = await uploadMeme(text_meme, messageUrl, twitterUrl, gifUrl);
+  return cid;
+}
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.on(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}!`);
   //run();
-  fetchMemes();
+  //fetchMemes();
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
 
-const run = async () => {
+export async function run() {
   console.log("hello internet");
 
   for (let i = 0; i < NUMBER_OF_MEMES_GENERATED; i++) {
@@ -57,7 +72,9 @@ const run = async () => {
   //console.log("the winner is", winner);
 
   await client.destroy();
-};
+
+  return "done";
+}
 
 async function fetchMemes() {
   const provider = new ethers.JsonRpcProvider(providerUrl);
@@ -190,9 +207,13 @@ async function postOnTwitter(message, gifUrl) {
   }
 }
 
-async function getMeme() {
+async function getMeme(keywords = "") {
   try {
-    const url = "http://3.81.38.203:3000/v1/chat/completions";
+    const url = "http://54.196.120.85:3000/v1/chat/completions";
+    const prompt =
+      "Please generate a short meme about web3. Use the following keywords to generate the meme: " +
+      keywords +
+      '. I want only the meme text, no other words. The meme should be humorous and relevant to web3. Also, include the keywords or phrase that I can search on Tenor to find an image related to the meme. Keep in mind that I will only use the first image that I find on Tenor, and I will add the text to the meme myself. \n\nThe answer format must strictly follow this JSON structure, with NO additional text or explanation:\n{\n  \\"text_meme\\": \\"{{the text_meme}}\\", \n  \\"image\\": \\"{{image_keywords_for_tenor}}\\"\n}\n\nPlease respect the format VERY carefully, just replace the text between {{}} with the generated meme text and the keywords for the image. Do not add any extra text or anything outside the JSON structure.';
     const options = {
       method: "POST",
       headers: {
@@ -204,8 +225,7 @@ async function getMeme() {
           { role: "system", content: "You are an AI agent creating memes." },
           {
             role: "user",
-            content:
-              'Please generate a short meme about web3. I want only the meme, no other word. It should only be a text-meme. You should also include words so I could search these words on tenor and get an image related to the text_meme. Keep in mind that I will always only take the first image that I find.  I will then add the text on the meme. The answer format should be a JSON like this: {"text_meme":{{the text_meme}}, "image": {{image i should search on tenor}}. The format is VERY very important, please respect it. Just remplate text between {{}}.',
+            content: prompt, //'Please generate a short meme about web3. Generate the meme using the following keywords: ' + keywords  +'. I want only the meme, no other word. It should only be a text-meme. You should also include words so I could search these words on tenor and get an image related to the text_meme. Keep in mind that I will always only take the first image that I find.  I will then add the text on the meme. The answer format should be a JSON like this: {"text_meme":{{the text_meme}}, "image": {{image i should search on tenor}}. The format is VERY very important, please respect it. Just remplate text between {{}}. No other text than the JSON well formated.',
           },
         ],
       }),
