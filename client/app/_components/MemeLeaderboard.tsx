@@ -2,89 +2,42 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import { fetchMemes } from "../utils/fetchMemes";
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
-const PROVIDER_URL = process.env.NEXT_PUBLIC_PROVIDER_URL;
-
-// Define the Meme interface
 interface Meme {
-  cid: string;
+  id: string;
+  imageUrl: string;
+  title: string;
   creator: string;
-  title: string; // Assuming title is part of the fetched data
-  score: number; // Score is required
+  score: number;
 }
 
 export default function MemeLeaderboard() {
   const [memes, setMemes] = useState<Meme[]>([]);
 
-  async function fetchMemes(): Promise<Meme[]> {
-    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
-    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-  
-    if (!providerUrl || !contractAddress) {
-      throw new Error("Missing required environment variables");
+  const cache: Record<string, Meme[]> = {};
+
+  async function loadMemes() {
+    if (cache["memes"]) {
+      setMemes(cache["memes"]);
+      return;
     }
 
-    const provider = new ethers.JsonRpcProvider(providerUrl);
-    const contract = new ethers.Contract(
-      contractAddress,
-      contractABI,
-      provider
-    );
-    const filter = contract.filters.MemeSubmitted();
-    const events = await contract.queryFilter(filter);
+    const memesWithStakes = await fetchMemes();
 
-    // Get memes with their cid and creator address
-    return events.map((event) => {
-      return {
-        cid: event.args.cid.toString(),
-        creator: event.args.creator,
-        title: "", // Initialize title, you will need to fetch it from IPFS or another source
-        score: 0, // Initialize score to 0
-      };
-    });
-  }  async function getDataMemes(memes: Meme[]): Promise<Meme[]> {
-    return await Promise.all(
-      memes.map(async (meme) => {
-        const { cid } = meme;
-        // Fetch data from IPFS using the CID
-        console.log('TEST'.repeat(100))
-        console.log(meme)
-        console.log(cid)
-        const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
-        const data = await response.json();
-        return { ...data, cid, score: meme.score }; // Ensure data contains title and score
-      })
-    );
-  }
-const cache: Record<string, Meme[]> = {};
-
-async function loadMemes() {
-  if (cache["memes"]) {
-    setMemes(cache["memes"]);
-    return;
-  }
-
-  const memesFromContract = await fetchMemes();
-  const memesWithData = await getDataMemes(memesFromContract);
-  const memesWithStakes = await Promise.all(
-    memesWithData.map(async (meme) => {
-      const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
-      const totalStaked = await contract.totalStaked(meme.cid);
-      return {
+    // Sort memes by score in descending order and take the top 5
+    const topMemes = memesWithStakes
+      .sort((a, b) => b.stakes - a.stakes)
+      .slice(0, 5)
+      .map((meme) => ({
         ...meme,
-        score: Number(ethers.formatEther(totalStaked)),
-      };
-    })
-  );
+        score: meme.stakes, // Use stakes as the score for the leaderboard
+      }));
 
-  const topMemes = memesWithStakes.sort((a, b) => b.score - a.score).slice(0, 5);
-  cache["memes"] = topMemes;
-  setMemes(topMemes);
-}
+    cache["memes"] = topMemes;
+    setMemes(topMemes);
+  }
+
   useEffect(() => {
     // Initial load
     loadMemes();
@@ -119,7 +72,7 @@ async function loadMemes() {
       <div className="space-y-4">
         {memes.map((meme, index) => (
           <motion.div
-            key={meme.cid}
+            key={meme.id}
             initial={{ x: -50 }}
             animate={{ x: 0 }}
             whileHover={{
@@ -156,6 +109,3 @@ async function loadMemes() {
     </motion.div>
   );
 }
-
-
-

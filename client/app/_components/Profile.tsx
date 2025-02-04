@@ -5,13 +5,18 @@ import { useAccount } from "wagmi";
 import { truncateAddress } from "../utils/formatting";
 import Navbar from "../_components/Navbar";
 import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
 import { useEffect, useState } from "react";
+import { fetchMemes } from "../utils/fetchMemes";
+import contractABI from "../../../server/scripts/abi.json";
+
 interface Meme {
-  cid: string;
-  creator: string;
+  id: string;
+  imageUrl: string;
   title: string;
-  score: number;
+  creator: string;
+  votes: number;
+  stakes: number;
+  tags: string[];
   isWinner: boolean;
 }
 
@@ -28,140 +33,83 @@ export default function Profile() {
     return (event as ethers.EventLog).args !== undefined;
   }
 
-  async function fetchUserMemes() {
+  async function fetchProfileMemes() {
     if (!address || !PROVIDER_URL || !CONTRACT_ADDRESS) return;
 
     const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
 
-    // Fetch all MemeSubmitted events
-    const submittedFilter = contract.filters.MemeSubmitted();
-    const submittedEvents = await contract.queryFilter(submittedFilter);
+    // Fetch all memes using the shared function
+    const allMemes = await fetchMemes();
 
-    // Filter events by creator address
-    const submitted = await Promise.all(
-      submittedEvents
-        .filter((event) => {
-          if (isEventLog(event)) {
-            return event.args.creator.toLowerCase() === address.toLowerCase();
-          }
-          return false;
-        })
-        .map(async (event) => {
-          if (isEventLog(event)) {
-            const totalStaked = await contract.totalStaked(event.args.cid);
-            return {
-              cid: event.args.cid.toString(),
-              creator: event.args.creator,
-              title: "",
-              score: Number(ethers.formatEther(totalStaked)),
-              isWinner: false,
-            };
-          }
-          return {
-            cid: "",
-            creator: "",
-            title: "",
-            score: 0,
-            isWinner: false,
-          };
-        })
-    );
-    setSubmittedMemes(submitted.filter((meme) => meme.cid !== ""));
+    // Filter memes by creator address for submitted memes
+    const submitted = allMemes.filter((meme) => meme.creator.toLowerCase() === address.toLowerCase());
+    setSubmittedMemes(submitted);
 
-    // Repeat similar logic for staked and winning memes
+    // Fetch staked memes
     const stakedFilter = contract.filters.TokensStaked();
     const stakedEvents = await contract.queryFilter(stakedFilter);
     const staked = await Promise.all(
       stakedEvents
-        .filter((event) => {
-          if (isEventLog(event)) {
-            return event.args.staker.toLowerCase() === address.toLowerCase();
-          }
-          return false;
-        })
+        .filter((event) => isEventLog(event) && event.args.staker.toLowerCase() === address.toLowerCase())
         .map(async (event) => {
-          if (isEventLog(event)) {
-            const totalStaked = await contract.totalStaked(event.args.cid);
-            return {
-              cid: event.args.cid.toString(),
-              creator: event.args.creator,
-              title: "",
-              score: Number(ethers.formatEther(totalStaked)),
-              isWinner: false,
-            };
-          }
+          if (!isEventLog(event)) return undefined;
+
+          const cid = event.args.cid.toString();
+          const totalStaked = await contract.totalStaked(cid);
+          const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+          const metadata = await response.json();
+
           return {
-            cid: "",
-            creator: "",
-            title: "",
-            score: 0,
+            id: cid,
+            imageUrl: metadata.gif_url,
+            title: metadata.meme || "Untitled Meme",
+            creator: event.args.creator,
+            votes: 0,
+            stakes: Number(ethers.formatEther(totalStaked)),
+            tags: metadata.tags || [],
             isWinner: false,
           };
         })
     );
-    setStakedMemes(staked.filter((meme) => meme.cid !== ""));
+    setStakedMemes(staked.filter((meme): meme is Meme => meme !== undefined));
 
+    // Fetch winning memes
     const winningFilter = contract.filters.WinnerDeclared();
     const winningEvents = await contract.queryFilter(winningFilter);
     const winning = await Promise.all(
       winningEvents
-        .filter((event) => {
-          if (isEventLog(event)) {
-            return event.args.creator.toLowerCase() === address.toLowerCase();
-          }
-          return false;
-        })
+        .filter((event) => isEventLog(event) && event.args.creator.toLowerCase() === address.toLowerCase())
         .map(async (event) => {
-          if (isEventLog(event)) {
-            const totalStaked = await contract.totalStaked(event.args.cid);
-            return {
-              cid: event.args.cid.toString(),
-              creator: event.args.creator,
-              title: "",
-              score: Number(ethers.formatEther(totalStaked)),
-              isWinner: true,
-            };
-          }
+          if (!isEventLog(event)) return undefined;
+
+          const cid = event.args.cid.toString();
+          const totalStaked = await contract.totalStaked(cid);
+          const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+          const metadata = await response.json();
+
           return {
-            cid: "",
-            creator: "",
-            title: "",
-            score: 0,
-            isWinner: false,
+            id: cid,
+            imageUrl: metadata.gif_url,
+            title: metadata.meme || "Untitled Meme",
+            creator: event.args.creator,
+            votes: 0,
+            stakes: Number(ethers.formatEther(totalStaked)),
+            tags: metadata.tags || [],
+            isWinner: true,
           };
         })
     );
-    setWinningMemes(winning.filter((meme) => meme.cid !== ""));
-  }  async function getMemeData(memes: Meme[]): Promise<Meme[]> {
-    return await Promise.all(
-      memes.map(async (meme) => {
-        const response = await fetch(`https://ipfs.io/ipfs/${meme.cid}`);
-        const data = await response.json();
-        return { ...meme, title: data.title };
-      })
-    );
+    setWinningMemes(winning.filter((meme): meme is Meme => meme !== undefined));
   }
 
   useEffect(() => {
     if (address) {
-      fetchUserMemes();
+      fetchProfileMemes();
     }
   }, [address]);
 
-  useEffect(() => {
-    async function loadMemeData() {
-      const submittedWithData = await getMemeData(submittedMemes);
-      const stakedWithData = await getMemeData(stakedMemes);
-      const winningWithData = await getMemeData(winningMemes);
-
-      setSubmittedMemes(submittedWithData);
-      setStakedMemes(stakedWithData);
-      setWinningMemes(winningWithData);
-    }
-    loadMemeData();
-  }, [submittedMemes, stakedMemes, winningMemes]);
-
+  // Rest of the component remains the same
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -228,19 +176,19 @@ export default function Profile() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {memes.map((meme) => (
                         <motion.div
-                          key={meme.cid}
+                          key={meme.id}
                           whileHover={{ scale: 1.05 }}
                           className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all border border-purple-500/20"
                         >
                           <motion.img
                             whileHover={{ scale: 1.1 }}
-                            src={`https://ipfs.io/ipfs/${meme.cid}`}
+                            src={meme.imageUrl}
                             alt={meme.title}
                             className="w-full h-32 object-cover rounded-lg mb-2"
                           />
                           <h3 className="text-white font-semibold text-sm">{meme.title}</h3>
                           <p className="text-gray-400 text-xs mt-1">
-                            {meme.isWinner ? "🏆 Winner" : `Score: ${meme.score}`}
+                            {meme.isWinner ? "🏆 Winner" : `Stakes: ${meme.stakes}`}
                           </p>
                         </motion.div>
                       ))}
