@@ -4,9 +4,7 @@ import { motion } from "framer-motion";
 import MemeCard from "../_components/MemeCard";
 import Navbar from "../_components/Navbar";
 import { useEffect, useState } from "react";
-import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
-
+import { fetchMemes } from "../utils/fetchMemes"; // Import the utility function
 interface Meme {
   id: string;
   imageUrl: string;
@@ -15,53 +13,24 @@ interface Meme {
   votes: number;
   stakes: number;
   tags: string[];
+  isWinner?: boolean;
 }
-
 export default function MemePool() {
   const [memes, setMemes] = useState<Meme[]>([]);
 
-  async function fetchMemes() {
-    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
-    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-
-    if (!providerUrl || !contractAddress) {
-      throw new Error("Missing required environment variables");
-    }
-
-    const provider = new ethers.JsonRpcProvider(providerUrl);
-    const contract = new ethers.Contract(contractAddress, contractABI, provider);
-    const filter = contract.filters.MemeSubmitted();
-    const events = await contract.queryFilter(filter);
-
-    const memesData = await Promise.all(
-      events.map(async (event): Promise<Meme | undefined> => {
-        const cid = event.args.cid.toString();
-        const totalStaked = await contract.totalStaked(cid);
-      
-        const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
-        const metadata = await response.json();
-
-        return {
-          id: cid,
-          imageUrl: metadata.gif_url,
-          title: metadata.meme || "Untitled Meme",
-          creator: event.args.creator,
-          votes: 0,
-          stakes: Number(ethers.formatEther(totalStaked)),
-          tags: metadata.tags || []
-        };
-      })
-    );
-
-    // Filter out undefined values and explicitly type as Meme[]
-    const validMemes: Meme[] = memesData.filter((meme): meme is Meme => meme !== undefined);
-    setMemes(validMemes);
-  }
   useEffect(() => {
-    fetchMemes();
+    const loadMemes = async () => {
+      try {
+        const memesData = await fetchMemes(); // Use the imported function
+        setMemes(memesData);
+      } catch (error) {
+        console.error("Failed to fetch memes:", error);
+      }
+    };
+
+    loadMemes();
   }, []);
 
-  // Rest of your existing UI code remains the same
   return (
     <div className="min-h-screen relative overflow-hidden">
       <AnimatedBackground />

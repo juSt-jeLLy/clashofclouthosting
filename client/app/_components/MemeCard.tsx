@@ -14,6 +14,12 @@ interface MemeCardProps {
   tags: string[];
 }
 
+// Utility function to truncate the address
+const truncateAddress = (address: string, startLength = 6, endLength = 4): string => {
+  if (address.length <= startLength + endLength) return address;
+  return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
+};
+
 export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }: MemeCardProps) {
   const [isStakeModalOpen, setIsStakeModalOpen] = useState<boolean>(false);
 
@@ -40,7 +46,8 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
             {title}
           </motion.h3>
           
-          <p className="text-gray-400 mt-2">Created by: {creator}</p>
+          {/* Truncated creator address */}
+          <p className="text-gray-400 mt-2">Created by: {truncateAddress(creator)}</p>
           
           <div className="flex gap-2 mt-3">
             {tags.map((tag) => (
@@ -50,14 +57,20 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
             ))}
           </div>
 
-          <div className="flex gap-2 mt-4">
+          {/* Show total staked amount here */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm text-gray-300">
+              Total Staked: <span className="font-bold text-emerald-400">{stakes} 💎</span>
+            </div>
+
+            {/* Stake button */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsStakeModalOpen(true)}
-              className="flex-1 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold"
+              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold"
             >
-              💎 {stakes} Stake
+              Stake
             </motion.button>
           </div>
         </div>
