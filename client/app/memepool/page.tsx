@@ -5,16 +5,7 @@ import MemeCard from "../_components/MemeCard";
 import Navbar from "../_components/Navbar";
 import { useEffect, useState } from "react";
 import { fetchMemes } from "../utils/fetchMemes"; // Import the utility function
-interface Meme {
-  id: string;
-  imageUrl: string;
-  title: string;
-  creator: string;
-  votes: number;
-  stakes: number;
-  tags: string[];
-  isWinner?: boolean;
-}
+
 export default function MemePool() {
   const [memes, setMemes] = useState<Meme[]>([]);
 

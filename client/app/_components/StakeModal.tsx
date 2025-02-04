@@ -11,7 +11,6 @@ interface StakeModalProps {
   onClose: () => void;
   memeId: string;
 }
-
 export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps) {
   const [stakeAmount, setStakeAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -24,11 +23,6 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
       return;
     }
 
-    if (typeof window.ethereum === "undefined") {
-      toast.error("MetaMask is not installed. Please install it to continue.");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -36,39 +30,24 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
 
-      // Convert ETH to Wei
-      const amountInWei = ethers.parseEther(stakeAmount);
+      // Format amount for Flow token (8 decimals)
+      const amount = ethers.parseUnits(stakeAmount, 8);
 
       // Check token balance
       const balance = await contract.balanceOf(signer.address);
-      if (balance < amountInWei) {
+      if (balance < amount) {
         toast.error("Insufficient token balance.");
         return;
       }
 
-      // Check allowance
-      const allowance = await contract.allowance(signer.address, CONTRACT_ADDRESS);
-      if (allowance < amountInWei) {
-        // If allowance is insufficient, call approve
-        const approveTx = await contract.approve(CONTRACT_ADDRESS, amountInWei);
-        await approveTx.wait();
-        toast.success("Approval successful!");
-      }
-
       // Call the stakeTokens function
-      const tx = await contract.stakeTokens(memeId, amountInWei);
+      const tx = await contract.stakeTokens(memeId, amount);
       await tx.wait();
 
       toast.success("Stake successful!");
       onClose();
     } catch (err: any) {
-      if (err.message.includes("Meme is no longer available for staking")) {
-        toast.error("This meme is no longer available for staking.");
-      } else if (err.message.includes("You have already staked on this meme")) {
-        toast.error("You have already staked on this meme.");
-      } else {
-        toast.error("Failed to stake. Please try again.");
-      }
+      toast.error("Failed to stake. Please try again.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -95,7 +74,7 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
         <div className="space-y-4">
           <input
             type="number"
-            placeholder="Enter ETH amount"
+            placeholder="Enter FLOW amount"
             value={stakeAmount}
             onChange={(e) => setStakeAmount(e.target.value)}
             className="w-full bg-black/50 border border-purple-500/30 rounded-lg p-3 text-white focus:border-pink-500 transition-colors"

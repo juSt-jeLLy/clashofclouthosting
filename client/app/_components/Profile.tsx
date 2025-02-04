@@ -51,8 +51,11 @@ export default function Profile() {
     const stakedEvents = await contract.queryFilter(stakedFilter);
     const staked = await Promise.all(
       stakedEvents
-        .filter((event) => isEventLog(event) && event.args.staker.toLowerCase() === address.toLowerCase())
-        .map(async (event) => {
+              .filter((event) => 
+                isEventLog(event) && 
+                event.args?.staker && 
+                event.args.staker.toLowerCase() === address.toLowerCase()
+              )        .map(async (event) => {
           if (!isEventLog(event)) return undefined;
 
           const cid = event.args.cid.toString();
@@ -79,8 +82,11 @@ export default function Profile() {
     const winningEvents = await contract.queryFilter(winningFilter);
     const winning = await Promise.all(
       winningEvents
-        .filter((event) => isEventLog(event) && event.args.creator.toLowerCase() === address.toLowerCase())
-        .map(async (event) => {
+              .filter((event) => 
+                isEventLog(event) && 
+                event.args?.creator && 
+                event.args.creator.toLowerCase() === address.toLowerCase()
+              )        .map(async (event) => {
           if (!isEventLog(event)) return undefined;
 
           const cid = event.args.cid.toString();
