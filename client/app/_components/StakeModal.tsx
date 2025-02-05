@@ -127,7 +127,7 @@ export default function StakeModal({
         <div className="space-y-4">
           <input
             type="number"
-            placeholder="Enter FLOW amount"
+            placeholder="Enter MTK amount"
             value={stakeAmount}
             onChange={(e) => setStakeAmount(e.target.value)}
             disabled={isLoading}

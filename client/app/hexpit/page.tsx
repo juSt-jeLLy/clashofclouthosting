@@ -24,20 +24,25 @@ export default function HexPit() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL+"/generate/"+keywords, {
-        method: "GET"
-      });
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + "/generate/" + keywords,
+        {
+          method: "GET",
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to generate meme");
 
       const data = await response.json();
 
-      const responseIpfs = await fetch(`https://gray-tough-gull-222.mypinata.cloud/ipfs/${data.cid}`);
+      const responseIpfs = await fetch(
+        `https://gray-tough-gull-222.mypinata.cloud/ipfs/${data.cid}`
+      );
       const metadata = await responseIpfs.json();
 
-      setMemeUrl(metadata.gif_url)
-      setMemeText(metadata.meme)
-      setCidHash(data.cid)
+      setMemeUrl(metadata.gif_url);
+      setMemeText(metadata.meme);
+      setCidHash(data.cid);
       toast.success("Meme generated successfully!");
     } catch (err) {
       toast.error("Failed to generate meme. Please try again.");
@@ -59,9 +64,15 @@ export default function HexPit() {
     }
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
+      const provider = new ethers.BrowserProvider(
+        window.ethereum as unknown as ethers.Eip1193Provider
+      );
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        contractABI,
+        signer
+      );
 
       provider.on("debug", console.log);
 
@@ -80,8 +91,8 @@ export default function HexPit() {
 
       // Submit meme to smart contract
       const tx = await contract.submitMeme(cidHash, await signer.getAddress(), {
-        gasLimit: ethers.toNumber("500000"), 
-        gasPrice: ethers.parseUnits("0.1", "gwei"), 
+        gasLimit: ethers.toNumber("500000"),
+        gasPrice: ethers.parseUnits("0.1", "gwei"),
         value: ethers.Zero,
       });
       await tx.wait();
@@ -126,7 +137,9 @@ export default function HexPit() {
             whileTap={{ scale: 0.98 }}
             className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-8 rounded-2xl border border-purple-500/20 backdrop-blur-lg w-full max-w-2xl"
           >
-            <h2 className="text-3xl font-bold text-purple-300 mb-6">Meme Generator</h2>
+            <h2 className="text-3xl font-bold text-purple-300 mb-6">
+              Meme Generator
+            </h2>
             <div className="space-y-6">
               <input
                 type="text"
@@ -154,7 +167,9 @@ export default function HexPit() {
               transition={{ delay: 0.2 }}
               className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-6 rounded-2xl border border-purple-500/20 backdrop-blur-lg w-full max-w-2xl"
             >
-              <h2 className="text-3xl font-bold text-purple-300 mb-6">Your Meme</h2>
+              <h2 className="text-3xl font-bold text-purple-300 mb-6">
+                Your Meme
+              </h2>
               <div className="flex justify-center">
                 <div className="w-64 h-64 rounded-lg border border-purple-500/30 overflow-hidden">
                   <img
@@ -164,7 +179,9 @@ export default function HexPit() {
                   />
                 </div>
               </div>
-              <p className="text-xl font-semibold text-purple-300">{memeText}</p>
+              <p className="text-xl font-semibold text-purple-300">
+                {memeText}
+              </p>
               <motion.button
                 onClick={submitMeme}
                 whileHover={{ scale: 1.05 }}

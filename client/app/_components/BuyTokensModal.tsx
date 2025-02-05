@@ -13,7 +13,10 @@ interface BuyTokensModalProps {
   onError: (error: any) => void;
 }
 
-export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps) {
+export default function BuyTokensModal({
+  isOpen,
+  onClose,
+}: BuyTokensModalProps) {
   const [ethAmount, setEthAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -21,11 +24,11 @@ export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps)
 
   const validateInput = () => {
     if (!ethAmount.trim()) {
-      toast.error("ETH amount is required");
+      toast.error("FLOW amount is required");
       return false;
     }
     if (isNaN(parseFloat(ethAmount)) || parseFloat(ethAmount) <= 0) {
-      toast.error("Please enter a valid positive ETH amount");
+      toast.error("Please enter a valid positive FLOW amount");
       return false;
     }
     return true;
@@ -43,7 +46,7 @@ export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps)
     if (typeof window.ethereum === "undefined") {
       toast.error("Please install MetaMask to continue", {
         duration: 4000,
-        icon: '🦊'
+        icon: "🦊",
       });
       return;
     }
@@ -52,50 +55,57 @@ export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps)
     setIsLoading(true);
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
-      
+      const provider = new ethers.BrowserProvider(
+        window.ethereum as unknown as ethers.Eip1193Provider
+      );
+
       // Request account access
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
-      
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        contractABI,
+        signer
+      );
+
       const amountInWei = ethers.parseEther(ethAmount);
       const amt = amountInWei.toString();
-      
+
       toast.loading("Purchasing tokens...", { id: toastId });
       const tx = await contract.buyTokens({ value: amt });
-      
+
       toast.loading("Waiting for confirmation...", { id: toastId });
       await tx.wait();
-      
+
       toast.loading("Approving transaction...", { id: toastId });
       const approveTx = await contract.approve(CONTRACT_ADDRESS, amt);
       await approveTx.wait();
 
       toast.success("🎉 Transaction completed successfully!", {
         id: toastId,
-        duration: 5000
+        duration: 5000,
       });
 
       // Reset and close modal
       handleClose();
-
     } catch (err: any) {
       const errorMessage = err.message || "Transaction failed";
-      
+
       if (errorMessage.includes("user rejected")) {
         toast.error("Transaction rejected by user", { id: toastId });
       } else if (errorMessage.includes("insufficient funds")) {
-        toast.error("Insufficient ETH balance", { id: toastId });
+        toast.error("Insufficient FLOW balance", { id: toastId });
       } else if (errorMessage.includes("Send ETH to buy tokens")) {
-        toast.error("Please send ETH to buy tokens", { id: toastId });
+        toast.error("Please send FLOW to buy tokens", { id: toastId });
       } else if (errorMessage.includes("Not enough tokens")) {
         toast.error("Insufficient token supply in contract", { id: toastId });
       } else {
-        toast.error(`Transaction failed: ${errorMessage.slice(0, 50)}...`, { id: toastId });
+        toast.error(`Transaction failed: ${errorMessage.slice(0, 50)}...`, {
+          id: toastId,
+        });
       }
-      
+
       console.error("Transaction Error:", err);
     } finally {
       setIsLoading(false);
@@ -125,7 +135,7 @@ export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps)
         <div className="space-y-4">
           <input
             type="number"
-            placeholder="Enter ETH amount"
+            placeholder="Enter FLOW amount"
             value={ethAmount}
             onChange={(e) => setEthAmount(e.target.value)}
             disabled={isLoading}
