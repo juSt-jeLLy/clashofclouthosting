@@ -34,10 +34,8 @@ export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps)
       const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
-      const amountInWei = ethers.parseEther(ethAmount);
-      const approveTx = await contract.approve(CONTRACT_ADDRESS, amountInWei);
-      await approveTx.wait();
-      toast.success("Approval successful!");
+      const amountInWei = ethers.toBigInt(ethAmount);
+      console.log("eth amt is",ethAmount)
       const tx = await contract.buyTokens({ value: amountInWei });
       await tx.wait();
       toast.success("Tokens purchased successfully!");
