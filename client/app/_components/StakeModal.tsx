@@ -6,6 +6,7 @@ import { ethers } from "ethers";
 import contractABI from "../../../server/scripts/abi.json";
 import { toast } from "react-hot-toast";
 
+
 interface StakeModalProps {
   isOpen: boolean;
   onClose: () => void;
