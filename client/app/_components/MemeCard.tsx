@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import StakeModal from "./StakeModal";
 import BuyTokensModal from "./BuyTokensModal";
+import { toast } from "react-hot-toast"; // Add toast import
 
 interface MemeCardProps {
   id: string;
@@ -15,16 +16,56 @@ interface MemeCardProps {
   tags: string[];
 }
 
-// Utility function to truncate the address
 const truncateAddress = (address: string, startLength = 6, endLength = 4): string => {
-  if (address.length <= startLength + endLength) return address;
-  return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
+  try {
+    if (!address) throw new Error("Invalid address");
+    if (address.length <= startLength + endLength) return address;
+    return `${address.slice(0, startLength)}...${address.slice(-endLength)}`;
+  } catch (error) {
+    toast.error("Invalid address format");
+    return "Invalid Address";
+  }
 };
 
 export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }: MemeCardProps) {
   const [isStakeModalOpen, setIsStakeModalOpen] = useState<boolean>(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const handleStakeSuccess = () => {
+    toast.success("Stake transaction completed!");
+    setIsStakeModalOpen(false);
+    setIsLoading(false);
+  };
+
+  const handleBuySuccess = () => {
+    toast.success("Token purchase successful!");
+    setIsBuyModalOpen(false);
+    setIsLoading(false);
+  };
+
+  const handleError = (error: any) => {
+    setIsLoading(false);
+    toast.error(error.message || "Transaction failed. Please try again.");
+  };
+
+  const handleStakeClick = () => {
+    try {
+      setIsLoading(true);
+      setIsStakeModalOpen(true);
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  const handleBuyClick = () => {
+    try {
+      setIsLoading(true);
+      setIsBuyModalOpen(true);
+    } catch (error) {
+      handleError(error);
+    }
+  };
 
   return (
     <>
@@ -33,12 +74,19 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
         className="bg-black/40 backdrop-blur-lg rounded-xl overflow-hidden border border-purple-500/20 hover:border-pink-500/40 transition-colors"
       >
         <div className="relative h-48 w-full">
-          <Image
-            src={imageUrl}
-            alt={title}
-            fill
-            className="object-cover"
-          />
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={title}
+              fill
+              className="object-cover"
+              onError={() => toast.error("Failed to load image")}
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+              <span className="text-gray-400">Image not available</span>
+            </div>
+          )}
         </div>
         
         <div className="p-4">
@@ -46,56 +94,71 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
             whileHover={{ scale: 1.02 }}
             className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text"
           >
-            {title}
+            {title || "Untitled Meme"}
           </motion.h3>
           
-          {/* Truncated creator address */}
           <p className="text-gray-400 mt-2">Created by: {truncateAddress(creator)}</p>
           
-          <div className="flex gap-2 mt-3">
-            {tags.map((tag) => (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {tags?.length > 0 ? tags.map((tag) => (
               <span key={tag} className="px-2 py-1 bg-purple-500/20 rounded-full text-xs text-purple-300">
                 {tag}
               </span>
-            ))}
+            )) : (
+              <span className="text-gray-400 text-sm">No tags</span>
+            )}
           </div>
 
-          {/* Show total staked amount here */}
           <div className="mt-4 flex items-center justify-between">
             <div className="text-sm text-gray-300">
-              Total Staked: <span className="font-bold text-emerald-400">{stakes} 💎</span>
+              Total Staked: <span className="font-bold text-emerald-400">{stakes || 0} 💎</span>
             </div>
 
-            {/* Stake button */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsStakeModalOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold"
-            >
-              Stake
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsBuyModalOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold"
-            >
-              Buy Meme Tokens
-            </motion.button>
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleStakeClick}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold disabled:opacity-50"
+              >
+                {isLoading ? "Processing..." : "Stake"}
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleBuyClick}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold disabled:opacity-50"
+              >
+                {isLoading ? "Processing..." : "Buy Tokens"}
+              </motion.button>
+            </div>
           </div>
         </div>
       </motion.div>
 
       <StakeModal
         isOpen={isStakeModalOpen}
-        onClose={() => setIsStakeModalOpen(false)}
+        onClose={() => {
+          setIsStakeModalOpen(false);
+          setIsLoading(false);
+        }}
+        onSuccess={handleStakeSuccess}
+        onError={handleError}
         memeId={id}
       />
+      
       <BuyTokensModal
         isOpen={isBuyModalOpen}
-        onClose={() => setIsBuyModalOpen(false)}
-        
+        onClose={() => {
+          
+          setIsBuyModalOpen(false);
+          setIsLoading(false);
+        }}
+        onSuccess={handleBuySuccess}
+        onError={handleError}
       />
     </>
   );

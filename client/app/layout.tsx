@@ -5,6 +5,7 @@ import Footer from './_components/Footer';
 import Providers from "./provider/provider";
 import { headers } from "next/headers";
 import ContextProvider from '@/app/context';
+import { Toaster } from 'react-hot-toast';
 export const metadata: Metadata = {
   title: 'Clash of Clout',
   description: 'Web3 Meme Battle Platform - Powered by WalletConnect',
@@ -25,7 +26,8 @@ export default async function RootLayout({
           <div className="min-h-screen flex flex-col bg-gradient-to-r from-purple-900 to-pink-900">
             <Navbar />
             <main className="flex-grow">
-              {children}
+                {children}
+                <Toaster position="top-center" />
             </main>
             <Footer />
           </div>
