@@ -32,7 +32,7 @@ export default function HexPit() {
 
       const data = await response.json();
 
-      const responseIpfs = await fetch(`https://ipfs.io/ipfs/${data.cid}`);
+      const responseIpfs = await fetch(`https://gray-tough-gull-222.mypinata.cloud/ipfs/${data.cid}`);
       const metadata = await responseIpfs.json();
 
       setMemeUrl(metadata.gif_url)
@@ -63,6 +63,8 @@ export default function HexPit() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
 
+      provider.on("debug", console.log);
+
       // Upload meme to IPFS
       /*
       const ipfsResponse = await fetch("/api/upload-to-ipfs", {
@@ -77,7 +79,11 @@ export default function HexPit() {
       const cid = ipfsData.cid;*/
 
       // Submit meme to smart contract
-      const tx = await contract.submitMeme(cidHash, await signer.getAddress());
+      const tx = await contract.submitMeme(cidHash, await signer.getAddress(), {
+        gasLimit: ethers.toNumber("500000"), 
+        gasPrice: ethers.parseUnits("0.1", "gwei"), 
+        value: ethers.Zero,
+      });
       await tx.wait();
 
       toast.success("Meme submitted successfully!");
