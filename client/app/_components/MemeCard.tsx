@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
 import StakeModal from "./StakeModal";
+import BuyTokensModal from "./BuyTokensModal";
 
 interface MemeCardProps {
   id: string;
@@ -22,6 +23,8 @@ const truncateAddress = (address: string, startLength = 6, endLength = 4): strin
 
 export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }: MemeCardProps) {
   const [isStakeModalOpen, setIsStakeModalOpen] = useState<boolean>(false);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
+
 
   return (
     <>
@@ -80,6 +83,11 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
         isOpen={isStakeModalOpen}
         onClose={() => setIsStakeModalOpen(false)}
         memeId={id}
+      />
+      <BuyTokensModal
+        isOpen={isBuyModalOpen}
+        onClose={() => setIsBuyModalOpen(false)}
+        
       />
     </>
   );
