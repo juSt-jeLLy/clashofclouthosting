@@ -75,6 +75,14 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
             >
               Stake
             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsBuyModalOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold"
+            >
+              Buy Meme Tokens
+            </motion.button>
           </div>
         </div>
       </motion.div>
