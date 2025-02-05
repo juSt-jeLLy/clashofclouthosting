@@ -9,6 +9,8 @@ import { toast, Toaster } from "react-hot-toast";
 export default function HexPit() {
   const [keywords, setKeywords] = useState<string>("");
   const [memeUrl, setMemeUrl] = useState<string>("");
+  const [memeText, setMemeText] = useState<string>("");
+  const [cidHash, setCidHash] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
@@ -22,16 +24,20 @@ export default function HexPit() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/generate-meme", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keywords }),
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL+"/generate/"+keywords, {
+        method: "GET"
       });
 
       if (!response.ok) throw new Error("Failed to generate meme");
 
       const data = await response.json();
-      setMemeUrl(data.url);
+
+      const responseIpfs = await fetch(`https://ipfs.io/ipfs/${data.cid}`);
+      const metadata = await responseIpfs.json();
+
+      setMemeUrl(metadata.gif_url)
+      setMemeText(metadata.meme)
+      setCidHash(data.cid)
       toast.success("Meme generated successfully!");
     } catch (err) {
       toast.error("Failed to generate meme. Please try again.");
@@ -58,6 +64,7 @@ export default function HexPit() {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
 
       // Upload meme to IPFS
+      /*
       const ipfsResponse = await fetch("/api/upload-to-ipfs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,10 +74,10 @@ export default function HexPit() {
       if (!ipfsResponse.ok) throw new Error("Failed to upload to IPFS");
 
       const ipfsData = await ipfsResponse.json();
-      const cid = ipfsData.cid;
+      const cid = ipfsData.cid;*/
 
       // Submit meme to smart contract
-      const tx = await contract.submitMeme(cid, await signer.getAddress());
+      const tx = await contract.submitMeme(cidHash, await signer.getAddress());
       await tx.wait();
 
       toast.success("Meme submitted successfully!");
@@ -151,6 +158,7 @@ export default function HexPit() {
                   />
                 </div>
               </div>
+              <p className="text-xl font-semibold text-purple-300">{memeText}</p>
               <motion.button
                 onClick={submitMeme}
                 whileHover={{ scale: 1.05 }}
