@@ -209,7 +209,7 @@ async function postOnTwitter(message, gifUrl) {
 
 async function getMeme(keywords = "") {
   try {
-    const url = "http://54.196.120.85:3000/v1/chat/completions";
+    const url = process.env.GAIA_NODE_DOMAIN + "/v1/chat/completions";
     const prompt =
       "Please generate a short meme about web3. Use the following keywords to generate the meme: " +
       keywords +
