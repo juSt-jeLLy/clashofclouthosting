@@ -6,21 +6,25 @@ import { ethers } from "ethers";
 import contractABI from "../../../server/scripts/abi.json";
 import { toast } from "react-hot-toast";
 
-
-interface StakeModalProps {
+interface BuyTokensModalProps {
   isOpen: boolean;
   onClose: () => void;
-  memeId: string;
 }
-export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps) {
-  const [stakeAmount, setStakeAmount] = useState<string>("");
+
+export default function BuyTokensModal({ isOpen, onClose }: BuyTokensModalProps) {
+  const [ethAmount, setEthAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
 
-  const handleStake = async () => {
-    if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
-      toast.error("Please enter a valid stake amount.");
+  const buyTokens = async () => {
+    if (!ethAmount || parseFloat(ethAmount) <= 0) {
+      toast.error("Please enter a valid ETH amount.");
+      return;
+    }
+
+    if (typeof window.ethereum === "undefined") {
+      toast.error("MetaMask is not installed. Please install it to continue.");
       return;
     }
 
@@ -30,25 +34,23 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
       const provider = new ethers.BrowserProvider(window.ethereum as unknown as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
-
-      // Format amount for Flow token (8 decimals)
-      const amount = ethers.parseUnits(stakeAmount, 8);
-
-      // Check token balance
-      const balance = await contract.balanceOf(signer.address);
-      if (balance < amount) {
-        toast.error("Insufficient token balance.");
-        return;
-      }
-
-      // Call the stakeTokens function
-      const tx = await contract.stakeTokens(memeId, amount);
+      const amountInWei = ethers.parseEther(ethAmount);
+      const approveTx = await contract.approve(CONTRACT_ADDRESS, amountInWei);
+      await approveTx.wait();
+      toast.success("Approval successful!");
+      const tx = await contract.buyTokens({ value: amountInWei });
       await tx.wait();
-
-      toast.success("Stake successful!");
+      toast.success("Tokens purchased successfully!");
+      setEthAmount(""); // Reset input
       onClose();
     } catch (err: any) {
-      toast.error("Failed to stake. Please try again.");
+      if (err.message.includes("Send ETH to buy tokens")) {
+        toast.error("You need to send ETH to buy tokens.");
+      } else if (err.message.includes("Not enough tokens in contract")) {
+        toast.error("Not enough tokens available.");
+      } else {
+        toast.error("Failed to buy tokens. Please try again.");
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -69,15 +71,15 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
         className="bg-black/70 backdrop-blur-lg rounded-xl p-6 border border-purple-500/20 w-full max-w-md"
       >
         <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text mb-4">
-          Stake on Meme
+          Buy Meme Tokens
         </h2>
 
         <div className="space-y-4">
           <input
             type="number"
-            placeholder="Enter FLOW amount"
-            value={stakeAmount}
-            onChange={(e) => setStakeAmount(e.target.value)}
+            placeholder="Enter ETH amount"
+            value={ethAmount}
+            onChange={(e) => setEthAmount(e.target.value)}
             className="w-full bg-black/50 border border-purple-500/30 rounded-lg p-3 text-white focus:border-pink-500 transition-colors"
           />
 
@@ -91,13 +93,13 @@ export default function StakeModal({ isOpen, onClose, memeId }: StakeModalProps)
               Cancel
             </motion.button>
             <motion.button
-              onClick={handleStake}
+              onClick={buyTokens}
               disabled={isLoading}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex-1 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-bold disabled:opacity-50"
             >
-              {isLoading ? "Staking..." : "Stake"}
+              {isLoading ? "Processing..." : "Buy Tokens"}
             </motion.button>
           </div>
         </div>

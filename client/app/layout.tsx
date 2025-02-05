@@ -1,10 +1,10 @@
 import "@/styles/globals.css";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
-import ContextProvider from '@/app/context';
 import Navbar from './_components/Navbar';
 import Footer from './_components/Footer';
-
+import Providers from "./provider/provider";
+import { headers } from "next/headers";
+import ContextProvider from '@/app/context';
 export const metadata: Metadata = {
   title: 'Clash of Clout',
   description: 'Web3 Meme Battle Platform - Powered by WalletConnect',
@@ -20,7 +20,8 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ContextProvider cookies={cookies}>
+      <ContextProvider cookies={cookies}>
+        <Providers>
           <div className="min-h-screen flex flex-col bg-gradient-to-r from-purple-900 to-pink-900">
             <Navbar />
             <main className="flex-grow">
@@ -28,7 +29,8 @@ export default async function RootLayout({
             </main>
             <Footer />
           </div>
-        </ContextProvider>
+          </Providers>
+          </ContextProvider>
       </body>
     </html>
   );
