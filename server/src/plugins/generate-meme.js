@@ -94,7 +94,7 @@ async function fetchMemes() {
   return memes;
 }
 
-async function publishResult() {
+export async function publishResult() {
   const provider = new ethers.JsonRpcProvider(providerUrl);
   const wallet = new ethers.Wallet(process.env.privateKey, provider);
   const contract = new ethers.Contract(contractAddress, contractABI, wallet);
@@ -102,6 +102,8 @@ async function publishResult() {
   const winner = await getWinner();
 
   contract.declareWinner(winner.cid);
+
+  return true;
 }
 
 async function publishMeme(cid) {
