@@ -2,10 +2,13 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StakeModal from "./StakeModal";
 import BuyTokensModal from "./BuyTokensModal";
 import { toast } from "react-hot-toast"; // Add toast import
+import {useAccount} from "wagmi";
+import {ethers} from "ethers";
+import contractABI from "../../../server/scripts/abi.json";
 
 interface MemeCardProps {
   id: string;
@@ -15,6 +18,8 @@ interface MemeCardProps {
   stakes: number;
   tags: string[];
 }
+
+
 
 const truncateAddress = (address: string, startLength = 6, endLength = 4): string => {
   try {
@@ -31,7 +36,10 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
   const [isStakeModalOpen, setIsStakeModalOpen] = useState<boolean>(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
+  const PROVIDER_URL = process.env.NEXT_PUBLIC_PROVIDER_URL;
+  const {address} = useAccount();
+  const [isOwner, setIsOwner]= useState<boolean>(false);
   const handleStakeSuccess = () => {
     toast.success("Stake transaction completed!");
     setIsStakeModalOpen(false);
@@ -66,6 +74,53 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
       handleError(error);
     }
   };
+
+  async function getOwner() {
+    if (!address || !PROVIDER_URL || !CONTRACT_ADDRESS) return;
+    const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
+    const owner = await contract.owner();
+    console.log("the owner of the contract is ", owner);
+    if (address) {
+      if (owner.toLowerCase() === address.toLowerCase()) {
+        console.log("You are the owner");
+        setIsOwner(true);
+      }
+      else{
+        console.log("You are not the owner");
+        setIsOwner(false);
+      }
+    }
+    
+  }
+
+  async function declareWinner(cid: string) {
+    if (!address || !PROVIDER_URL || !CONTRACT_ADDRESS) return;
+  
+    const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
+  
+    try {
+      const tx = await contract.declareWinner(cid);
+      await tx.wait();
+      console.log(`Winner declared for meme with CID: ${cid}`);
+    } catch (error) {
+      console.error("Error declaring winner:", error);
+    }
+  }
+
+  const handleDeclareWinner = () => {
+    try {
+      setIsLoading(true);
+      declareWinner(id);
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  useEffect(() => {
+    getOwner();
+  }, []);
 
   return (
     <>
@@ -134,6 +189,15 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
               >
                 {isLoading ? "Processing..." : "Buy Tokens"}
               </motion.button>
+              {isOwner? (<motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={handleDeclareWinner}
+                disabled={isLoading}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg font-bold disabled:opacity-50"
+              >
+                {isLoading ? "Processing..." : "Declare Winner"}
+              </motion.button>): null}
             </div>
           </div>
         </div>
