@@ -93,7 +93,7 @@ export default function HexPit() {
       const tx = await contract.submitMeme(cidHash, await signer.getAddress(), {
         gasLimit: ethers.toNumber("500000"),
         gasPrice: ethers.parseUnits("0.1", "gwei"),
-        value: ethers.Zero,
+        value: ethers.parseEther("0")
       });
       await tx.wait();
 

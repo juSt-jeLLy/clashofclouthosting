@@ -17,7 +17,7 @@ interface Meme {
   votes: number;
   stakes: number;
   tags: string[];
-  isWinner: boolean;
+  isWinner?: boolean;  // Make isWinner optional to match fetchMemes.ts
 }
 
 export default function Profile() {
@@ -42,27 +42,32 @@ export default function Profile() {
     // Fetch all memes using the shared function
     const allMemes = await fetchMemes();
 
-    // Filter memes by creator address for submitted memes
-    const submitted = allMemes.filter((meme) => meme.creator.toLowerCase() === address.toLowerCase());
-    setSubmittedMemes(submitted);
+      // Filter memes by creator address for submitted memes
+      const submitted = allMemes.filter((meme) => meme.creator.toLowerCase() === address.toLowerCase())
+        .map(meme => ({
+          ...meme,
+          isWinner: meme.isWinner || false  // Provide a default value
+        }));
+      setSubmittedMemes(submitted);
 
     // Fetch staked memes
     const stakedFilter = contract.filters.TokensStaked();
     const stakedEvents = await contract.queryFilter(stakedFilter);
-    const staked = await Promise.all(
+    const staked = (await Promise.all(
       stakedEvents
-              .filter((event) => 
-                isEventLog(event) && 
-                event.args?.staker && 
-                event.args.staker.toLowerCase() === address.toLowerCase()
-              )        .map(async (event) => {
-          if (!isEventLog(event)) return undefined;
-
+        .filter((event) => 
+          isEventLog(event) && 
+          event.args?.staker && 
+          event.args.staker.toLowerCase() === address.toLowerCase()
+        )
+        .map(async (event) => {
+          if (!isEventLog(event)) return null;
+    
           const cid = event.args.cid.toString();
           const totalStaked = await contract.totalStaked(cid);
           const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
           const metadata = await response.json();
-
+    
           return {
             id: cid,
             imageUrl: metadata.gif_url,
@@ -71,29 +76,30 @@ export default function Profile() {
             votes: 0,
             stakes: Number(ethers.formatEther(totalStaked)),
             tags: metadata.tags || [],
-            isWinner: false,
-          };
+            isWinner: false
+          } as Meme;
         })
-    );
-    setStakedMemes(staked.filter((meme): meme is Meme => meme !== undefined));
-
+    )).filter((meme): meme is Meme => meme !== null);
+    
+    setStakedMemes(staked);
     // Fetch winning memes
     const winningFilter = contract.filters.WinnerDeclared();
     const winningEvents = await contract.queryFilter(winningFilter);
-    const winning = await Promise.all(
+    const winning = (await Promise.all(
       winningEvents
-              .filter((event) => 
-                isEventLog(event) && 
-                event.args?.creator && 
-                event.args.creator.toLowerCase() === address.toLowerCase()
-              )        .map(async (event) => {
+        .filter((event) => 
+          isEventLog(event) && 
+          event.args?.creator && 
+          event.args.creator.toLowerCase() === address.toLowerCase()
+        )
+        .map(async (event): Promise<Meme | undefined> => {
           if (!isEventLog(event)) return undefined;
-
+    
           const cid = event.args.cid.toString();
           const totalStaked = await contract.totalStaked(cid);
           const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
           const metadata = await response.json();
-
+    
           return {
             id: cid,
             imageUrl: metadata.gif_url,
@@ -102,11 +108,12 @@ export default function Profile() {
             votes: 0,
             stakes: Number(ethers.formatEther(totalStaked)),
             tags: metadata.tags || [],
-            isWinner: true,
-          };
+            isWinner: true
+          } as Meme;
         })
-    );
-    setWinningMemes(winning.filter((meme): meme is Meme => meme !== undefined));
+    )).filter((meme): meme is Meme => meme !== undefined);
+    
+    setWinningMemes(winning);
   }
 
   useEffect(() => {

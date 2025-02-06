@@ -26,7 +26,7 @@ export async function fetchMemes(): Promise<Meme[]> {
   const events = await contract.queryFilter(filter);
 
   const memesData = await Promise.all(
-    events.map(async (event): Promise<Meme | undefined> => {
+    events.map(async (event: any): Promise<Meme | undefined> => {
       const cid = event.args.cid.toString();
       const totalStaked = await contract.totalStaked(cid);
 
