@@ -21,8 +21,13 @@ export default function MemePool() {
   useEffect(() => {
     const loadMemes = async () => {
       try {
-        const memesData = await fetchMemes(); // Use the imported function
-        setMemes(memesData);
+        const memesData = await fetchMemes();
+        // Sort memes by timestamp/id in descending order (newest first)
+        const sortedMemes = memesData.sort((a, b) => {
+          // Assuming memes have a timestamp field, otherwise use ID
+          return b.id.localeCompare(a.id);
+        });
+        setMemes(sortedMemes);
       } catch (error) {
         console.error("Failed to fetch memes:", error);
       }
