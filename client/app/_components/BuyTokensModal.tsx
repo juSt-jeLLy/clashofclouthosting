@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import contractABI from "../abi.json";
 import { toast } from "react-hot-toast";
 
 interface BuyTokensModalProps {

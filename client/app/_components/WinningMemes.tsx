@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import contractABI from "../abi.json";
 interface WinningMeme {
   id: string;
   imageUrl: string;

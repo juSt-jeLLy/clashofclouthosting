@@ -6,7 +6,7 @@ import Navbar from "../_components/Navbar";
 import { useEffect, useState } from "react";
 import { fetchMemes } from "../utils/fetchMemes";
 import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import contractABI from "../abi.json";
 
 interface Meme {
   id: string;

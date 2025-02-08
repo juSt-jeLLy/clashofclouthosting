@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import contractABI from "../abi.json";
 
 interface Meme {
   id: string;

@@ -8,7 +8,7 @@ import BuyTokensModal from "./BuyTokensModal";
 import { toast } from "react-hot-toast"; // Add toast import
 import {useAccount} from "wagmi";
 import {ethers} from "ethers";
-import contractABI from "../../../server/scripts/abi.json";
+import contractABI from "../abi.json";
 
 interface MemeCardProps {
   id: string;
