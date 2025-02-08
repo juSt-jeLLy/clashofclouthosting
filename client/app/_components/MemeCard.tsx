@@ -58,21 +58,13 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
   };
 
   const handleStakeClick = () => {
-    try {
-      setIsLoading(true);
-      setIsStakeModalOpen(true);
-    } catch (_error) {
-      handleError(_error);
-    }
+    setIsLoading(true);
+    setIsStakeModalOpen(true);
   };
 
   const handleBuyClick = () => {
-    try {
-      setIsLoading(true);
-      setIsBuyModalOpen(true);
-    } catch (_error) {
-      handleError(_error);
-    }
+    setIsLoading(true);
+    setIsBuyModalOpen(true);
   };
 
   async function getOwner() {
