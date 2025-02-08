@@ -16,8 +16,8 @@ config({
   path: path,
 });
 
-const providerUrl = "https://testnet.evm.nodes.onflow.org";
-const contractAddress = "0x56bAD49451a06c19b1b9d4dD7168Ae9abf7ffca7";
+const providerUrl = process.env.PROVIDER_URL;
+const contractAddress = "0xbDfe26d05a569E3c305C8Bb10f3d864D309ED494"; //"0x56bAD49451a06c19b1b9d4dD7168Ae9abf7ffca7";
 import contractABI from "./abi.json" with { type: "json" };
 
 const NUMBER_OF_MEMES_GENERATED = 3;
@@ -101,9 +101,43 @@ export async function publishResult() {
 
   const winner = await getWinner();
 
-  contract.declareWinner(winner.cid);
+  console.log(winner);
 
-  return true;
+  //
+  console.log("owner");
+
+  console.log("Wallet address:", wallet.address);
+
+  console.log(await contract.owner());
+
+  console.log(await contract.totalStaked(winner.cid));
+  console.log(providerUrl);
+
+  const feeData = await provider.getFeeData();
+
+  try {
+    const tx = await contract.declareWinner(winner.cid, {
+      gasLimit: ethers.toNumber("500000"),
+      maxFeePerGas: feeData.maxFeePerGas,
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+    });
+    console.log(tx);
+    const txReceipt = await provider.getTransactionReceipt(tx.hash);
+    if (!txReceipt) {
+      console.log("La transaction n'a pas encore été minée.");
+    } else if (txReceipt.status === 0) {
+      console.error("La transaction a été revert.");
+    } else {
+      console.log("Transaction réussie :", txReceipt);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  console.log("yes");
+  console.log("test".repeat);
+
+  return winner.cid;
 }
 
 async function publishMeme(cid) {
@@ -138,10 +172,22 @@ async function getWinner() {
   const link_memes = await fetchMemes();
   const memes = await getDataMemes(link_memes);
   console.log(memes);
-  const winner = await memes.sort(
+  /*  const winner = await memes.sort(
     (a, b) =>
       checkDiscord(a.discord_message_url) - checkDiscord(b.discord_message_url)
-  )[0];
+  )[0];*/
+
+  const scores = await Promise.all(
+    memes.map(async (meme) => ({
+      meme,
+      score: await checkDiscord(meme.discord_message_url),
+    }))
+  );
+
+  const winner = scores.reduce((max, current) =>
+    current.score > max.score ? current : max
+  ).meme;
+
   return {
     ...winner,
     discordCount: await checkDiscord(winner.discord_message_url),
