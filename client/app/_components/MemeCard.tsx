@@ -110,10 +110,10 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
     }
   };
 
-  useEffect(() => {
-    getOwner();
-  }, [address, CONTRACT_ADDRESS, PROVIDER_URL, getOwner]);
-  
+useEffect(() => {
+  getOwner();
+}, [address, CONTRACT_ADDRESS, PROVIDER_URL, getOwner]);
+
 
   return (
     <>
