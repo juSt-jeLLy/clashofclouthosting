@@ -33,7 +33,7 @@
     "standard-version": "^9.5.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "author": "Abridged, Inc.",
   "license": "MIT",
