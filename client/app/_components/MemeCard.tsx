@@ -61,8 +61,8 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
     try {
       setIsLoading(true);
       setIsStakeModalOpen(true);
-    } catch (error) {
-      handleError(error);
+    } catch (_error) {
+      handleError(_error);
     }
   };
 
@@ -70,8 +70,8 @@ export default function MemeCard({ id, imageUrl, title, creator, stakes, tags }:
     try {
       setIsLoading(true);
       setIsBuyModalOpen(true);
-    } catch (error) {
-      handleError(error);
+    } catch (_error) {
+      handleError(_error);
     }
   };
 
