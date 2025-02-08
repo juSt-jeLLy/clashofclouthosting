@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { fetchMemes } from "../utils/fetchMemes";
+import { ethers } from "ethers";
+import contractABI from "../../../server/scripts/abi.json";
 
 interface Meme {
   id: string;
@@ -10,11 +12,11 @@ interface Meme {
   title: string;
   creator: string;
   score: number;
+  isAvailable: boolean;
 }
 
 export default function MemeLeaderboard() {
   const [memes, setMemes] = useState<Meme[]>([]);
-
   const cache: Record<string, Meme[]> = {};
 
   async function loadMemes() {
@@ -23,15 +25,37 @@ export default function MemeLeaderboard() {
       return;
     }
 
+    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    if (!providerUrl || !contractAddress) {
+      throw new Error("Missing environment variables");
+    }
+
+    const provider = new ethers.JsonRpcProvider(providerUrl);
+    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
     const memesWithStakes = await fetchMemes();
 
-    // Sort memes by score in descending order and take the top 5
-    const topMemes = memesWithStakes
+    // Get isAvailable status for each meme from contract
+    const memesWithAvailability = await Promise.all(
+      memesWithStakes.map(async (meme) => {
+        const memeData = await contract.memes(meme.id);
+        return {
+          ...meme,
+          isAvailable: memeData.isAvailable
+        };
+      })
+    );
+
+    // Filter and sort available memes
+    const topMemes = memesWithAvailability
+      .filter(meme => meme.isAvailable)
       .sort((a, b) => b.stakes - a.stakes)
       .slice(0, 5)
       .map((meme) => ({
         ...meme,
-        score: meme.stakes, // Use stakes as the score for the leaderboard
+        score: meme.stakes,
       }));
 
     cache["memes"] = topMemes;
@@ -80,29 +104,36 @@ export default function MemeLeaderboard() {
               backgroundColor: "rgba(255,255,255,0.15)",
             }}
             transition={{ delay: index * 0.1 }}
-            className="flex items-center justify-between bg-white/5 p-4 rounded-lg border border-purple-500/10 hover:border-pink-500/30 transition-all duration-300"
+            className="flex flex-col bg-white/5 p-4 rounded-lg border border-purple-500/10 hover:border-pink-500/30 transition-all duration-300"
           >
-            <div className="flex items-center gap-4">
-              <motion.span
-                whileHover={{ scale: 1.2, rotate: 360 }}
-                transition={{ duration: 0.5 }}
-                className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"
-              >
-                #{index + 1}
-              </motion.span>
-              <div>
-                <h3 className="text-white font-semibold">{meme.title}</h3>
-                <p className="text-gray-400 text-sm hover:text-purple-400 transition-colors">
-                  {meme.creator?.slice(0, 6)}...{meme.creator?.slice(-4)}
-                </p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <motion.span
+                  whileHover={{ scale: 1.2, rotate: 360 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"
+                >
+                  #{index + 1}
+                </motion.span>
+                <div>
+                  <h3 className="text-white font-semibold">{meme.title}</h3>
+                  <p className="text-gray-400 text-sm hover:text-purple-400 transition-colors">
+                    {meme.creator?.slice(0, 6)}...{meme.creator?.slice(-4)}
+                  </p>
+                </div>
               </div>
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="text-pink-400 font-bold px-4 py-1 rounded-full bg-pink-500/10"
+              >
+                {meme.score.toLocaleString()}
+              </motion.div>
             </div>
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              className="text-pink-400 font-bold px-4 py-1 rounded-full bg-pink-500/10"
-            >
-              {meme.score.toLocaleString()}
-            </motion.div>
+            <img
+              src={meme.imageUrl}
+              alt={meme.title}
+              className="w-full h-48 object-cover rounded-lg"
+            />
           </motion.div>
         ))}
       </div>

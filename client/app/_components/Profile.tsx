@@ -17,7 +17,7 @@ interface Meme {
   votes: number;
   stakes: number;
   tags: string[];
-  isWinner?: boolean;  // Make isWinner optional to match fetchMemes.ts
+  isWinner?: boolean;
 }
 
 export default function Profile() {
@@ -39,18 +39,15 @@ export default function Profile() {
     const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider);
 
-    // Fetch all memes using the shared function
     const allMemes = await fetchMemes();
 
-      // Filter memes by creator address for submitted memes
-      const submitted = allMemes.filter((meme) => meme.creator.toLowerCase() === address.toLowerCase())
-        .map(meme => ({
-          ...meme,
-          isWinner: meme.isWinner || false  // Provide a default value
-        }));
-      setSubmittedMemes(submitted);
+    const submitted = allMemes.filter((meme) => meme.creator.toLowerCase() === address.toLowerCase())
+      .map(meme => ({
+        ...meme,
+        isWinner: meme.isWinner || false
+      }));
+    setSubmittedMemes(submitted);
 
-    // Fetch staked memes
     const stakedFilter = contract.filters.TokensStaked();
     const stakedEvents = await contract.queryFilter(stakedFilter);
     const staked = (await Promise.all(
@@ -82,37 +79,37 @@ export default function Profile() {
     )).filter((meme): meme is Meme => meme !== null);
     
     setStakedMemes(staked);
-    // Fetch winning memes
+
     const winningFilter = contract.filters.WinnerDeclared();
-    const winningEvents = await contract.queryFilter(winningFilter);
-    const winning = (await Promise.all(
-      winningEvents
+    const events = await contract.queryFilter(winningFilter);
+
+    const winning = await Promise.all(
+      events
         .filter((event) => 
           isEventLog(event) && 
-          event.args?.creator && 
-          event.args.creator.toLowerCase() === address.toLowerCase()
+          event.args?.winner && 
+          event.args.winner.toLowerCase() === address.toLowerCase()
         )
-        .map(async (event): Promise<Meme | undefined> => {
+        .map(async (event) => {
           if (!isEventLog(event)) return undefined;
-    
-          const cid = event.args.cid.toString();
-          const totalStaked = await contract.totalStaked(cid);
+          
+          const cid = event.args.cid;
           const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
           const metadata = await response.json();
-    
+
           return {
             id: cid,
             imageUrl: metadata.gif_url,
-            title: metadata.meme || "Untitled Meme",
-            creator: event.args.creator,
+            title: metadata.meme || "Champion Meme",
+            creator: event.args.winner,
             votes: 0,
-            stakes: Number(ethers.formatEther(totalStaked)),
+            stakes: Number(ethers.formatEther(await contract.totalStaked(cid))),
             tags: metadata.tags || [],
             isWinner: true
           } as Meme;
         })
-    )).filter((meme): meme is Meme => meme !== undefined);
-    
+    ).then(memes => memes.filter((meme): meme is Meme => meme !== undefined));
+
     setWinningMemes(winning);
   }
 
@@ -122,7 +119,6 @@ export default function Profile() {
     }
   }, [address]);
 
-  // Rest of the component remains the same
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {

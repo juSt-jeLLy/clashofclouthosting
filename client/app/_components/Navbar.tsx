@@ -34,20 +34,7 @@ export default function Navbar() {
         },
       }}
       className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-purple-500/20"
-    >
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20"
-        animate={{
-          scale: [1, 1.2, 1],
-          rotate: [0, 180, 360],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-      />
-
+  >
       <div className="container mx-auto px-4 py-4 flex items-center justify-between relative z-10">
         <Link href="/">
           <motion.div

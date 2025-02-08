@@ -14,7 +14,7 @@ contract MemeContract is ERC20, Ownable {
     }
 
     mapping(string => Meme) public memes;
-    string[] private memeList; 
+    string[] public memeList; 
     string[] public winnerMemes;
     mapping(string => uint256) public totalStaked;
     mapping(string => mapping(address => uint256)) public stakes;
@@ -74,39 +74,79 @@ contract MemeContract is ERC20, Ownable {
         emit TokensStaked(_cid, msg.sender, _amount);
     }
 
+    // function declareWinner(string memory _cid) public onlyOwner {
+    //     require(memes[_cid].isAvailable, "This meme is no longer available");
+    //     require(totalStaked[_cid] > 0, "No stakes on this meme");
+
+    //     memes[_cid].isAvailable = false;
+    //     winnerMemes.push(_cid);
+
+    //     address winner = memes[_cid].creator;
+    //     uint256 creatorReward = (totalStaked[_cid] * 70) / 100;
+    //     uint256 voterReward = (totalStaked[_cid] * 20) / 100;
+    //     uint256 platformReward = (totalStaked[_cid] * 10) / 100;
+
+    //     _transfer(address(this), winner, creatorReward);
+    //     distributeToVoters(_cid, voterReward);
+    //     _transfer(address(this), platformWallet, platformReward);
+
+    //     for (uint i = 0; i < memeList.length; i++) {
+    //         string memory memeCid = memeList[i];
+    //         if (memes[memeCid].isAvailable) {
+    //             totalStaked[memeCid] = 0;
+    //         }
+    //     }
+
+    //     emit WinnerDeclared(_cid, winner);
+    // }
+
+    // function distributeToVoters(string memory _cid, uint256 _rewardPool) private {
+    //     require(totalStaked[_cid] > 0, "No stakes to distribute");
+    //     for (uint i = 0; i < stakers[_cid].length; i++) {
+    //         address staker = stakers[_cid][i];
+    //         uint256 originalStake = stakes[_cid][staker];
+    //         uint256 voterReward = (_rewardPool * originalStake) / totalStaked[_cid];
+    //         _transfer(address(this), staker, originalStake + voterReward);
+    //     }
+    // }
     function declareWinner(string memory _cid) public onlyOwner {
-        require(memes[_cid].isAvailable, "This meme is no longer available");
-        require(totalStaked[_cid] > 0, "No stakes on this meme");
+    require(memes[_cid].isAvailable, "This meme is no longer available");
+    require(totalStaked[_cid] > 0, "No stakes on this meme");
 
-        memes[_cid].isAvailable = false;
-        winnerMemes.push(_cid);
+    memes[_cid].isAvailable = false;
+    winnerMemes.push(_cid);
 
-        address winner = memes[_cid].creator;
-        uint256 creatorReward = (totalStaked[_cid] * 70) / 100;
-        uint256 voterReward = (totalStaked[_cid] * 20) / 100;
-        uint256 platformReward = (totalStaked[_cid] * 10) / 100;
+    address winner = memes[_cid].creator;
+    uint256 creatorReward = (totalStaked[_cid] * 70) / 100;
+    uint256 voterReward = (totalStaked[_cid] * 20) / 100;
+    uint256 platformReward = (totalStaked[_cid] * 10) / 100;
 
-        _transfer(address(this), winner, creatorReward);
-        distributeToVoters(_cid, voterReward);
-        _transfer(address(this), platformWallet, platformReward);
-
-        for (uint i = 0; i < memeList.length; i++) {
+    
+    _transfer(address(this), winner, creatorReward);
+    _transfer(address(this), platformWallet, platformReward);
+    refundWinningMemeVoters(_cid, voterReward);
+    for (uint i = 0; i < memeList.length; i++) {
             string memory memeCid = memeList[i];
             if (memes[memeCid].isAvailable) {
                 totalStaked[memeCid] = 0;
             }
-        }
-
-        emit WinnerDeclared(_cid, winner);
     }
+    emit WinnerDeclared(_cid, winner);
+}
 
-    function distributeToVoters(string memory _cid, uint256 _rewardPool) private {
-        require(totalStaked[_cid] > 0, "No stakes to distribute");
-        for (uint i = 0; i < stakers[_cid].length; i++) {
-            address staker = stakers[_cid][i];
-            uint256 originalStake = stakes[_cid][staker];
-            uint256 voterReward = (_rewardPool * originalStake) / totalStaked[_cid];
-            _transfer(address(this), staker, originalStake + voterReward);
-        }
+function refundWinningMemeVoters(string memory _cid, uint256 _rewardPool) private {
+    require(totalStaked[_cid] > 0, "No stakes to distribute");
+    
+    for (uint i = 0; i < stakers[_cid].length; i++) {
+        address staker = stakers[_cid][i];
+        uint256 originalStake = stakes[_cid][staker];
+        uint256 voterReward = (_rewardPool * originalStake) / totalStaked[_cid];
+
+        // Send back original stake + voter reward
+        _transfer(address(this), staker, originalStake + voterReward);
     }
 }
+
+}
+
+ 

@@ -4,7 +4,10 @@ import { motion } from "framer-motion";
 import MemeCard from "../_components/MemeCard";
 import Navbar from "../_components/Navbar";
 import { useEffect, useState } from "react";
-import { fetchMemes } from "../utils/fetchMemes"; // Import the utility function
+import { fetchMemes } from "../utils/fetchMemes";
+import { ethers } from "ethers";
+import contractABI from "../../../server/scripts/abi.json";
+
 interface Meme {
   id: string;
   imageUrl: string;
@@ -13,27 +16,55 @@ interface Meme {
   votes: number;
   stakes: number;
   tags: string[];
-  isWinner?: boolean;
+  isAvailable: boolean;
 }
+
 export default function MemePool() {
   const [memes, setMemes] = useState<Meme[]>([]);
+  const cache: Record<string, Meme[]> = {};
+
+  const loadMemes = async () => {
+    if (cache["memes"]) {
+      setMemes(cache["memes"]);
+      return;
+    }
+
+    const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    if (!providerUrl || !contractAddress) {
+      throw new Error("Missing environment variables");
+    }
+
+    const provider = new ethers.JsonRpcProvider(providerUrl);
+    const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
+    const memesWithStakes = await fetchMemes();
+
+    // Get isAvailable status for each meme
+    const memesWithAvailability = await Promise.all(
+      memesWithStakes.map(async (meme) => {
+        const memeData = await contract.memes(meme.id);
+        return {
+          ...meme,
+          isAvailable: memeData.isAvailable
+        };
+      })
+    );
+
+    // Filter only available memes and sort by newest first
+    const availableMemes = memesWithAvailability
+      .filter(meme => meme.isAvailable)
+      .sort((a, b) => b.id.localeCompare(a.id));
+
+    cache["memes"] = availableMemes;
+    setMemes(availableMemes);
+  };
 
   useEffect(() => {
-    const loadMemes = async () => {
-      try {
-        const memesData = await fetchMemes();
-        // Sort memes by timestamp/id in descending order (newest first)
-        const sortedMemes = memesData.sort((a, b) => {
-          // Assuming memes have a timestamp field, otherwise use ID
-          return b.id.localeCompare(a.id);
-        });
-        setMemes(sortedMemes);
-      } catch (error) {
-        console.error("Failed to fetch memes:", error);
-      }
-    };
-
     loadMemes();
+    const interval = setInterval(loadMemes, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

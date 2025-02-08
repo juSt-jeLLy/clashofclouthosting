@@ -1,117 +1,121 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import contractABI from "../../../server/scripts/abi.json";
-import { fetchMemes } from "../utils/fetchMemes";
-
 interface WinningMeme {
   id: string;
-  creator: string;
-  title: string;
-  winningDate: string;
-  score: number;
   imageUrl: string;
+  title: string;
+  creator: string;
+  winningStakes: number;
+  timestamp: number;
 }
 
 export default function WinningMemes() {
   const [winningMemes, setWinningMemes] = useState<WinningMeme[]>([]);
 
-  async function fetchWinningMemes(): Promise<WinningMeme[]> {
-    const allMemes = await fetchMemes();
-    const winningMemes = allMemes.filter((meme) => meme.isWinner);
-
-    return winningMemes.map((meme) => ({
-      id: meme.id,
-      creator: meme.creator,
-      title: meme.title,
-      winningDate: new Date().toISOString().split('T')[0], // Adjust this if you have a specific date
-      score: meme.stakes,
-      imageUrl: meme.imageUrl,
-    }));
-  }
-
-  useEffect(() => {
-    async function loadWinningMemes() {
-      const memesWithData = await fetchWinningMemes();
-      const lastThreeWinners = memesWithData.slice(-3).reverse();
-      setWinningMemes(lastThreeWinners);
-    }
-    loadWinningMemes();
-  }, []);
-
-  useEffect(() => {
+  async function fetchWinningMemes() {
     const providerUrl = process.env.NEXT_PUBLIC_PROVIDER_URL;
     const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 
-    if (!providerUrl || !contractAddress) return;
+    if (!providerUrl || !contractAddress) {
+      throw new Error("Missing environment variables");
+    }
 
     const provider = new ethers.JsonRpcProvider(providerUrl);
     const contract = new ethers.Contract(contractAddress, contractABI, provider);
 
-    // Increase the polling interval (e.g., 15 seconds)
-    provider.pollingInterval = 15000;
+    const filter = contract.filters.WinnerDeclared();
+    const events = await contract.queryFilter(filter);
 
-    // Listen for new winners
-    contract.on("WinnerDeclared", async (cid, winner) => {
-      const newMeme = {
-        id: cid.toString(),
-        creator: winner,
-        title: "",
-        winningDate: new Date().toISOString().split('T')[0],
-        score: 0,
-        imageUrl: `https://ipfs.io/ipfs/${cid}`,
-      };
-      setWinningMemes((prevMemes) => [...prevMemes.slice(-2), newMeme]);
-    });
+    const winningMemesData = await Promise.all(
+      events.map(async (event: any) => {
+        const cid = event.args.cid;
+        const winner = event.args.winner;
+        const block = await event.getBlock();
+        
+        const response = await fetch(`https://ipfs.io/ipfs/${cid}`);
+        const metadata = await response.json();
 
-    return () => {
-      contract.removeAllListeners("WinnerDeclared");
-    };
+        return {
+          id: cid,
+          imageUrl: metadata.gif_url,
+          title: metadata.meme || "Champion Meme",
+          creator: winner,
+          winningStakes: await contract.totalStaked(cid),
+          timestamp: block.timestamp * 1000
+        };
+      })
+    ).then(memes => memes.sort((a, b) => b.timestamp - a.timestamp));
+
+    setWinningMemes(winningMemesData);
+  }
+
+  useEffect(() => {
+    fetchWinningMemes();
   }, []);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
-      className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-pink-500/20 shadow-[0_0_15px_rgba(219,39,119,0.3)]"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-purple-500/20 shadow-[0_0_15px_rgba(147,51,234,0.3)]"
     >
-      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6">
-        Hall of Fame 🏆
-      </h2>
-      <div className="space-y-6">
+      <motion.h2
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        transition={{
+          repeat: Infinity,
+          repeatType: "reverse",
+          duration: 2,
+        }}
+        className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6"
+      >
+        🏆 Hall of Fame 🏆
+      </motion.h2>
+      <div className="space-y-4">
         {winningMemes.map((meme, index) => (
           <motion.div
             key={meme.id}
-            initial={{ x: -100 }}
+            initial={{ x: -50 }}
             animate={{ x: 0 }}
-            transition={{ delay: index * 0.2 }}
-            whileHover={{ scale: 1.02 }}
-            className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-all border border-purple-500/20"
+            whileHover={{
+              scale: 1.02,
+              backgroundColor: "rgba(255,255,255,0.15)",
+            }}
+            transition={{ delay: index * 0.1 }}
+            className="flex flex-col bg-white/5 p-4 rounded-lg border border-purple-500/10 hover:border-pink-500/30 transition-all duration-300"
           >
-            <motion.img
-              whileHover={{ scale: 1.05 }}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <motion.span
+                  whileHover={{ scale: 1.2, rotate: 360 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"
+                >
+                  #{index + 1}
+                </motion.span>
+                <div>
+                  <h3 className="text-white font-semibold">{meme.title}</h3>
+                  <p className="text-gray-400 text-sm hover:text-purple-400 transition-colors">
+                    {meme.creator.slice(0, 6)}...{meme.creator.slice(-4)}
+                  </p>
+                </div>
+              </div>
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="text-pink-400 font-bold px-4 py-1 rounded-full bg-pink-500/10"
+              >
+                {ethers.formatEther(meme.winningStakes)} MTK
+              </motion.div>
+            </div>
+            <img
               src={meme.imageUrl}
               alt={meme.title}
-              className="w-full h-48 object-cover rounded-lg mb-2 hover:shadow-[0_0_20px_rgba(219,39,119,0.4)]"
+              className="w-full h-48 object-cover rounded-lg"
             />
-            <h3 className="text-white font-semibold text-lg">{meme.title}</h3>
-            <div className="flex justify-between text-gray-300 text-sm mt-2">
-              <motion.span
-                whileHover={{ color: "#f472b6" }}
-                className="flex items-center gap-2"
-              >
-                🏆 {meme.winningDate}
-              </motion.span>
-              <motion.span
-                whileHover={{ scale: 1.1 }}
-                className="text-pink-400 font-bold"
-              >
-                {meme.score.toLocaleString()} votes
-              </motion.span>
-            </div>
           </motion.div>
         ))}
       </div>
